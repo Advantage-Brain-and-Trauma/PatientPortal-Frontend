@@ -18,6 +18,42 @@ and notable configuration/docs changes.
 
 ---
 
+## 2026-09-28
+
+### Feature: floating Patient Support chat widget (Location -> Case ID -> Chat)
+> **What:** Added a bottom-right chat launcher + compact popup on every patient page, built on
+> the backend-pp patient chat API (case-scoped threads, per the "Patient Portal Chat - API
+> reference" sheet updated 2026-09-28). Flow: Welcome -> Location -> Case ID -> Connecting ->
+> Conversation, driven by one explicit `view` state. Locations and cases both come from
+> `GET chat/cases` (one row per case with its backend-derived `department`); the Location step
+> is skipped when there is one location and the Case ID step when the location has one case.
+> Empty states: No locations / No cases (Back only when there were multiple locations).
+> `POST chat/conversations {case_id, department}` find-or-creates the thread for the case, so
+> reopening a case reuses its existing uuid. The transcript loads the newest page (API is
+> oldest-first, paginated) with "Load earlier messages"; staff replies are labelled
+> "{Location} Care Team" and no staff identity fields are read. No realtime API exists, so the
+> open thread is polled every 5s with a self-scheduling timeout (no overlap), only while the
+> popup is open, not minimized and the tab visible; messages are de-duplicated by id. Case
+> labels reuse the sidebar format "MM/DD/YYYY - PI" (insurance type joined by case id from
+> `get-case-ids-by-email`, best-effort). No attachment control (no upload endpoint), no unread
+> badge (not in the patient API), no "Online" presence (not in the API), no third-party
+> branding.
+>
+> **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
+> (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
+>
+> **Auth / case-scoping / patient-data:** Chat calls use a SEPARATE axios instance so the shared
+> interceptors never apply: the portal JWT is sent only to `chat/identify/patient`, all other
+> calls use the `chat_token`, and a chat 401 re-identifies once then shows "session expired" —
+> it never triggers the global logout/redirect. No `?case_id=` auto-injection on chat calls (the
+> case is explicit in the body). The chat token is memory-only and cleared when the signed-in
+> user changes; message bodies and tokens are never logged; nothing is written to storage.
+> Widget renders only for authenticated non-staff/non-admin users outside `/login` and
+> `/reset-password`. `api.ts`, `network.ts`, AuthContext, Layout and the sidebar case selector
+> are unchanged. `pnpm run check` and `pnpm run build` pass.
+
+---
+
 ## 2026-09-03
 
 ### Docs: correct stale repo/deploy facts and seed the Claude memory index
