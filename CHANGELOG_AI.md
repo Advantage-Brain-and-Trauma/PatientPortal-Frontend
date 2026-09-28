@@ -45,6 +45,10 @@ and notable configuration/docs changes.
 > uses the sidebar's id fallback, and orders cases like the sidebar. `date_of_injury` is used only
 > for a case missing from that list.
 >
+> **Follow-up (same day):** Removed the heart + "AdvantageHCS" logo row from the popup header at the
+> developer's request; the header is now a single row (support icon + title, minimize/close).
+> Also removed the heart icon from the "Let's chat!" welcome screen.
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >

@@ -7,7 +7,7 @@ import {
   Clock,
   FileText,
   Headset,
-  Heart,
+  type LucideIcon,
   MapPin,
   MessageCircle,
   MessagesSquare,
@@ -131,7 +131,7 @@ const mergeMessages = (current: ChatMessage[], incoming: ChatMessage[]): ChatMes
   });
 };
 
-function StateIcon({ icon: Icon }: { icon: typeof Heart }) {
+function StateIcon({ icon: Icon }: { icon: LucideIcon }) {
   return (
     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
       <Icon className="h-7 w-7" />
@@ -536,7 +536,6 @@ export default function PatientChatWidget() {
       case "welcome":
         return (
           <div className="flex flex-1 flex-col justify-center p-6">
-            <StateIcon icon={Heart} />
             <StateText title="Let's chat!">Select where you need assistance to get started.</StateText>
             <Button className="mt-6 w-full" onClick={() => void startFlow()}>
               Start chat
@@ -755,28 +754,20 @@ export default function PatientChatWidget() {
       aria-label="Patient support chat"
       className="fixed bottom-4 right-4 z-50 flex h-[min(560px,calc(100dvh-2rem))] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl sm:bottom-6 sm:right-6 sm:w-[370px]"
     >
-      <div className="border-b border-border px-4 pb-3 pt-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 font-heading text-sm font-bold">
-            <Heart className="h-5 w-5 fill-primary text-primary" />
-            <span className="text-foreground">
-              Advantage<span className="text-primary">HCS</span>
-            </span>
-          </div>
-          <div className="flex items-center">
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Minimize chat" onClick={() => setIsMinimized(true)}>
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Close chat" onClick={handleClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Headset className="h-5 w-5" />
           </div>
-          <p className="text-sm font-semibold text-foreground">{headerTitle}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{headerTitle}</p>
+        </div>
+        <div className="flex shrink-0 items-center">
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Minimize chat" onClick={() => setIsMinimized(true)}>
+            <Minus className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Close chat" onClick={handleClose}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
