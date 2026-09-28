@@ -110,6 +110,15 @@ and notable configuration/docs changes.
 > red at the limit; pasting text that would exceed the limit shows a `sonner` warning toast since
 > `maxLength` truncates it silently.
 >
+> **Bug fix (same day) — chat auto-closed once after a page refresh.** The widget's "different user
+> signed in" reset was keyed on `user.email`. After a refresh, AuthContext first sets the email from
+> the JWT, then Layout's `refreshUserDetails()` replaces it with the patient record's email
+> (`get-patient-details`), which can differ (e.g. proxy accounts / casing) — so a chat opened in that
+> window was reset and closed once. It is now keyed on the stable JWT account id (`user.id`) plus
+> auth state, compared against a ref so it only fires on a real change (logout / different account)
+> and never on first render. This also stops a sidebar case switch (which calls
+> `refreshUserDetails()` again) from closing an open chat. AuthContext unchanged.
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >

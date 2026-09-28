@@ -355,12 +355,20 @@ export default function PatientChatWidget() {
   }, []);
 
   // A different (or no) patient signed in: drop all chat state and the token.
+  // Keyed on the stable account id from the JWT — NOT user.email: after a page
+  // refresh, refreshUserDetails() swaps the login email for the patient
+  // record's email, which used to close a chat the patient had just opened.
+  // Skips the first render (nothing to reset yet).
+  const accountIdentity = isAuthenticated ? String(user?.id ?? "") : "";
+  const accountIdentityRef = useRef(accountIdentity);
   useEffect(() => {
+    if (accountIdentityRef.current === accountIdentity) return;
+    accountIdentityRef.current = accountIdentity;
     clearChatToken();
     resetFlow();
     setIsOpen(false);
     setIsMinimized(false);
-  }, [user?.email, isAuthenticated, resetFlow]);
+  }, [accountIdentity, resetFlow]);
 
   const showError = useCallback((error: unknown, retry?: () => void) => {
     if (isSessionExpired(error)) {
