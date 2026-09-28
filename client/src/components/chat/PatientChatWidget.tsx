@@ -33,6 +33,7 @@ import Apis from "@/lib/Apis";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { broadcastChatEvent, ChatSyncEvent, subscribeChatEvents } from "@/lib/chatSync";
 import ChatAttachmentPreview, { ChatAttachmentPreviewTarget } from "@/components/chat/ChatAttachmentPreview";
 import ChatApi, {
   CHAT_ATTACHMENTS_ENABLED,
@@ -363,12 +364,21 @@ export default function PatientChatWidget() {
   const accountIdentityRef = useRef(accountIdentity);
   useEffect(() => {
     if (accountIdentityRef.current === accountIdentity) return;
+    const previousIdentity = accountIdentityRef.current;
     accountIdentityRef.current = accountIdentity;
+    // Tell other tabs of the previous account to drop their chat state too
+    // (they may not have noticed the logout yet).
+    if (previousIdentity) broadcastChatEvent(previousIdentity, { type: "reset" });
     clearChatToken();
     resetFlow();
     setIsOpen(false);
     setIsMinimized(false);
   }, [accountIdentity, resetFlow]);
+
+  /** Cross-tab sync: send an event to this account's other tabs (ids only). */
+  const notifyTabs = useCallback((event: ChatSyncEvent) => {
+    if (accountIdentityRef.current) broadcastChatEvent(accountIdentityRef.current, event);
+  }, []);
 
   const showError = useCallback((error: unknown, retry?: () => void) => {
     if (isSessionExpired(error)) {
@@ -422,8 +432,9 @@ export default function PatientChatWidget() {
       await loadLatestMessages(target.uuid);
       if (generation !== generationRef.current) return;
       setView("conversation");
+      notifyTabs({ type: "conversation_opened", uuid: target.uuid });
     },
-    [loadLatestMessages]
+    [loadLatestMessages, notifyTabs]
   );
 
   const openConversation = useCallback(
@@ -583,6 +594,7 @@ export default function PatientChatWidget() {
     setEnding(true);
     try {
       await ChatApi.closeConversation(otherOpen.uuid);
+      notifyTabs({ type: "conversation_ended", uuid: otherOpen.uuid });
       if (generation !== generationRef.current) return;
       setOtherOpen(null);
       setPendingCase(null);
@@ -602,6 +614,7 @@ export default function PatientChatWidget() {
     setEnding(true);
     try {
       await ChatApi.closeConversation(uuid);
+      notifyTabs({ type: "conversation_ended", uuid });
       if (conversationUuidRef.current !== uuid) return;
       // Ended from the close (X) warning: end the chat and close the popup.
       setConfirmingEnd(false);
@@ -625,6 +638,34 @@ export default function PatientChatWidget() {
     resetFlow();
     void startFlow();
   };
+
+  /**
+   * Server is the source of truth across tabs: if the patient already has an
+   * open conversation (started in another tab, or before a refresh), go straight
+   * into it instead of showing "Let's chat!". Falls back to the welcome screen
+   * on any non-auth failure, where "Start chat" still works.
+   */
+  const checkForOpenConversation = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    const generation = generationRef.current;
+    setView("loading");
+    try {
+      const conversations = await ChatApi.getConversations();
+      if (generation !== generationRef.current) return;
+      const openThread = conversations.find((item) => !item.closed_at);
+      if (openThread) {
+        void resumeConversation(openThread, cases);
+        return;
+      }
+      setView("welcome");
+    } catch (error) {
+      if (generation !== generationRef.current) return;
+      setView(isSessionExpired(error) ? "session_expired" : "welcome");
+    } finally {
+      busyRef.current = false;
+    }
+  }, [cases, resumeConversation]);
 
   const handleLocationContinue = () => {
     if (selectedLocation) applyLocation(selectedLocation, cases);
@@ -683,6 +724,7 @@ export default function PatientChatWidget() {
       setMessages((current) => mergeMessages(current, [sent]));
       setDraft("");
       selectPendingFile(null);
+      notifyTabs({ type: "messages_changed", uuid });
       void refreshMessages().catch(() => {});
     } catch (error) {
       if (isSessionExpired(error)) {
@@ -777,8 +819,16 @@ export default function PatientChatWidget() {
   }, [isOpen, isMinimized, view]);
 
   const handleLauncherClick = () => {
+    const wasMinimized = isMinimized;
     setIsOpen(true);
     setIsMinimized(false);
+    if (view === "welcome") {
+      // Resume an open conversation (e.g. started in another tab) right away.
+      void checkForOpenConversation();
+    } else if (wasMinimized && view === "conversation") {
+      // Catch up immediately instead of waiting for the next poll tick.
+      void refreshMessages().catch(() => {});
+    }
   };
 
   const handleClose = () => {
@@ -797,6 +847,53 @@ export default function PatientChatWidget() {
     resetFlow();
     void startFlow();
   };
+
+  // Cross-tab sync (BroadcastChannel). The handler lives in a ref so the single
+  // subscription always sees the latest state. Popup open/minimized/closed is
+  // deliberately NOT synced — only the conversation.
+  const syncHandlerRef = useRef<(event: ChatSyncEvent & { account: string }) => void>(() => {});
+  syncHandlerRef.current = (event) => {
+    if (!accountIdentityRef.current || event.account !== accountIdentityRef.current) return;
+    const currentUuid = conversationUuidRef.current;
+    switch (event.type) {
+      case "reset":
+        clearChatToken();
+        resetFlow();
+        setIsOpen(false);
+        setIsMinimized(false);
+        return;
+      case "messages_changed":
+        if (currentUuid === event.uuid) void refreshMessages().catch(() => {});
+        return;
+      case "conversation_ended":
+        if (currentUuid === event.uuid) {
+          resetFlow();
+          if (isOpen && !isMinimized) toast.info("This chat was ended in another tab.");
+        }
+        return;
+      case "conversation_opened":
+        // Already showing it, or popup closed (it resumes on open via the server check).
+        if (currentUuid === event.uuid || !isOpen) return;
+        // Don't interrupt an in-flight step or an active thread in this tab.
+        if (view === "loading" || view === "connecting" || view === "conversation") return;
+        void checkForOpenConversation();
+        return;
+    }
+  };
+
+  useEffect(() => subscribeChatEvents((event) => syncHandlerRef.current(event)), []);
+
+  // When this tab becomes visible again, catch up right away instead of waiting
+  // up to one poll interval (polling pauses while the tab is hidden).
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden || !isOpen || isMinimized) return;
+      if (view === "conversation") void refreshMessages().catch(() => {});
+      else if (view === "welcome") void checkForOpenConversation();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isOpen, isMinimized, view, refreshMessages, checkForOpenConversation]);
 
   if (!isVisible) return null;
 
@@ -848,7 +945,7 @@ export default function PatientChatWidget() {
         return (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
             <Spinner className="size-6 text-primary" />
-            Loading your options...
+            Loading...
           </div>
         );
 

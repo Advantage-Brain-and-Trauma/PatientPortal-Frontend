@@ -119,6 +119,19 @@ and notable configuration/docs changes.
 > and never on first render. This also stops a sidebar case switch (which calls
 > `refreshUserDetails()` again) from closing an open chat. AuthContext unchanged.
 >
+> **Follow-up (same day) — multi-tab chat sync (popup state intentionally NOT synced).**
+> (A) Server-driven resume: opening the popup on the welcome screen now calls `GET chat/conversations`
+> immediately and, if a conversation is open, goes straight into it (previously only after "Start
+> chat"). Restoring a minimized chat, or returning to a hidden tab, refreshes messages at once instead
+> of waiting for the next 5s poll. (B) New `client/src/lib/chatSync.ts`: a `BroadcastChannel`
+> ("ahcs-patient-chat") carrying ONLY event names + ids, scoped to the JWT account id — never message
+> text, names or tokens; each tab re-reads through the API. Events: `conversation_opened` (other tabs
+> showing a pre-conversation screen resume it), `messages_changed` (other tabs viewing that thread
+> refresh now), `conversation_ended` (other tabs showing it reset, with an info toast if visible),
+> `reset` on logout/account change (other tabs drop chat state and the chat token). No loops: a tab
+> already showing the uuid ignores `conversation_opened`, and refreshes never broadcast. Browsers
+> without BroadcastChannel fall back to (A). Loading text changed to a generic "Loading...".
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >
