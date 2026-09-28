@@ -162,7 +162,10 @@ export default function PatientChatWidget() {
   const [errorState, setErrorState] = useState<ChatErrorState | null>(null);
 
   const [cases, setCases] = useState<ChatCase[]>([]);
-  const [insuranceTypes, setInsuranceTypes] = useState<Record<string, string>>({});
+  // Portal case list (same source as the sidebar selector), keyed by case id.
+  const [portalCases, setPortalCases] = useState<
+    Record<string, { doi: string; insuranceType: string; order: number }>
+  >({});
   const [locations, setLocations] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedCaseId, setSelectedCaseId] = useState("");
@@ -186,22 +189,32 @@ export default function PatientChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const lastMessageIdRef = useRef<string | null>(null);
 
+  // Same label as the sidebar case selector (Layout.getCaseDisplayLabel): the
+  // portal case list's doi + insurance_type win; chat/cases' date_of_injury is
+  // only a fallback when the case is missing from the portal list.
   const caseLabel = useCallback(
     (chatCase: ChatCase): string => {
-      const doi = formatDoi(chatCase.date_of_injury);
-      const insuranceType = insuranceTypes[String(chatCase.case_id)] || "";
+      const portal = portalCases[String(chatCase.case_id)];
+      const doi = portal ? formatDoi(portal.doi) : formatDoi(chatCase.date_of_injury);
+      const insuranceType = portal?.insuranceType || "";
       if (doi && insuranceType) return `${doi} - ${insuranceType}`;
       if (doi) return doi;
       if (insuranceType) return insuranceType;
-      return `Case #${chatCase.case_id}`;
+      return String(chatCase.case_id);
     },
-    [insuranceTypes]
+    [portalCases]
   );
 
-  const locationCases = useMemo(
-    () => cases.filter((chatCase) => chatCase.department === selectedLocation),
-    [cases, selectedLocation]
-  );
+  // Filtered to the selected location, ordered like the sidebar list.
+  const locationCases = useMemo(() => {
+    const orderOf = (chatCase: ChatCase) =>
+      portalCases[String(chatCase.case_id)]?.order ?? Number.MAX_SAFE_INTEGER;
+    return cases
+      .filter((chatCase) => chatCase.department === selectedLocation)
+      .map((chatCase, index) => ({ chatCase, index }))
+      .sort((a, b) => orderOf(a.chatCase) - orderOf(b.chatCase) || a.index - b.index)
+      .map(({ chatCase }) => chatCase);
+  }, [cases, selectedLocation, portalCases]);
 
   const resetFlow = useCallback(() => {
     generationRef.current += 1;
@@ -212,6 +225,7 @@ export default function PatientChatWidget() {
     setView("welcome");
     setErrorState(null);
     setCases([]);
+    setPortalCases({});
     setLocations([]);
     setSelectedLocation("");
     setSelectedCaseId("");
@@ -323,22 +337,27 @@ export default function PatientChatWidget() {
       const fetchedCases = await ChatApi.getCases();
       if (generation !== generationRef.current) return;
 
-      // Best-effort: reuse the portal's own case list for the insurance type so
-      // labels match the sidebar ("MM/DD/YYYY - PI"). Joined by case id only.
+      // Best-effort: reuse the portal's own case list (the sidebar's source) so
+      // labels and order match the sidebar exactly. Joined by case id only.
       try {
         const response: any = user?.email ? await Apis.getCaseIdsByEmail(user.email) : null;
         const list = response?.data?.cases || response?.cases || [];
         if (Array.isArray(list) && generation === generationRef.current) {
-          const map: Record<string, string> = {};
-          for (const item of list) {
-            const id = String(item?.case_id ?? item?.id ?? "");
-            const insuranceType = String(item?.insurance_type ?? "").trim();
-            if (id && insuranceType) map[id] = insuranceType;
-          }
-          setInsuranceTypes(map);
+          const map: Record<string, { doi: string; insuranceType: string; order: number }> = {};
+          list.forEach((item: any, order: number) => {
+            // Same id resolution as the sidebar (Layout.getCaseIdValue).
+            const id = String(item?.case_id || item?.id || "");
+            if (!id || map[id]) return;
+            map[id] = {
+              doi: String(item?.doi ?? "").trim(),
+              insuranceType: String(item?.insurance_type ?? "").trim(),
+              order,
+            };
+          });
+          setPortalCases(map);
         }
       } catch {
-        // Labels fall back to the date of injury / case id.
+        // Labels fall back to chat/cases' date of injury / case id.
       }
       if (generation !== generationRef.current) return;
 

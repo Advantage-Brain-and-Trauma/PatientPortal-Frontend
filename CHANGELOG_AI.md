@@ -39,6 +39,12 @@ and notable configuration/docs changes.
 > badge (not in the patient API), no "Online" presence (not in the API), no third-party
 > branding.
 >
+> **Follow-up fix (same day):** Case ID labels in the widget didn't match the sidebar because the
+> date came from `chat/cases.date_of_injury` while the sidebar uses `get-case-ids-by-email.doi`.
+> The widget now takes BOTH doi and insurance_type from the sidebar's source (joined by case id),
+> uses the sidebar's id fallback, and orders cases like the sidebar. `date_of_injury` is used only
+> for a case missing from that list.
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >
