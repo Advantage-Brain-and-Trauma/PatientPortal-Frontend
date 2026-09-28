@@ -64,6 +64,12 @@ and notable configuration/docs changes.
 > chat is detected on the patient's next send (no extra polling of the inbox). Note: the sheet marks
 > this backend change set as NOT YET DEPLOYED (two ALTERs + backfill pending).
 >
+> **Follow-up (same day):** Moved "End chat" to the close (X) button per the developer. Removed the
+> "End chat" link under the composer and its inline confirmation. Clicking X during an active
+> conversation now opens a warning `AlertDialog` ("End this chat?" — Keep chatting / End chat);
+> confirming calls `close`, then closes and resets the popup. X on any other screen still just closes.
+> Minimize keeps the chat open. The "ended" screen now only covers a chat ended by the care team.
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >

@@ -21,6 +21,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -204,7 +213,6 @@ export default function PatientChatWidget() {
   // patient was trying to open when the backend answered 409.
   const [otherOpen, setOtherOpen] = useState<{ uuid: string; case_id: number | null } | null>(null);
   const [pendingCase, setPendingCase] = useState<ChatCase | null>(null);
-  const [endedByPatient, setEndedByPatient] = useState(false);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [ending, setEnding] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -268,7 +276,6 @@ export default function PatientChatWidget() {
     setCareTeamName("");
     setOtherOpen(null);
     setPendingCase(null);
-    setEndedByPatient(false);
     setConfirmingEnd(false);
     setEnding(false);
     setMessages([]);
@@ -519,9 +526,11 @@ export default function PatientChatWidget() {
     try {
       await ChatApi.closeConversation(uuid);
       if (conversationUuidRef.current !== uuid) return;
+      // Ended from the close (X) warning: end the chat and close the popup.
       setConfirmingEnd(false);
-      setEndedByPatient(true);
-      setView("ended");
+      setIsOpen(false);
+      setIsMinimized(false);
+      resetFlow();
     } catch (error) {
       if (isSessionExpired(error)) {
         setView("session_expired");
@@ -571,7 +580,6 @@ export default function PatientChatWidget() {
         setView("session_expired");
       } else if (isClosedConversation(error)) {
         // The conversation was ended (e.g. by the care team) — it can't be written to again.
-        setEndedByPatient(false);
         setView("ended");
       } else {
         setSendError(describeError(error).message);
@@ -651,6 +659,11 @@ export default function PatientChatWidget() {
   };
 
   const handleClose = () => {
+    // Closing an active conversation ends it, so warn first.
+    if (view === "conversation" && conversationUuidRef.current) {
+      setConfirmingEnd(true);
+      return;
+    }
     setIsOpen(false);
     setIsMinimized(false);
     resetFlow();
@@ -838,10 +851,8 @@ export default function PatientChatWidget() {
         return (
           <div className="flex flex-1 flex-col justify-center p-6">
             <StateIcon icon={MessageCircle} />
-            <StateText title={endedByPatient ? "Chat ended" : "This conversation has ended"}>
-              {endedByPatient
-                ? "Thanks for reaching out. You can start a new chat any time."
-                : "Your care team has closed this conversation. Start a new chat to continue."}
+            <StateText title="This conversation has ended">
+              Your care team has closed this conversation. Start a new chat to continue.
             </StateText>
             <Button className="mt-5 w-full" onClick={handleStartOver}>
               Start a new chat
@@ -920,19 +931,6 @@ export default function PatientChatWidget() {
             </div>
             <div className="border-t border-border p-3">
               {sendError && <p className="mb-2 text-xs text-destructive">{sendError}</p>}
-              {confirmingEnd && (
-                <div className="mb-2 rounded-lg bg-muted p-3 text-xs text-foreground">
-                  <p>End this chat? You won't be able to send more messages in it.</p>
-                  <div className="mt-2 flex justify-end gap-2">
-                    <Button variant="ghost" size="sm" disabled={ending} onClick={() => setConfirmingEnd(false)}>
-                      Cancel
-                    </Button>
-                    <Button variant="destructive" size="sm" disabled={ending} onClick={() => void handleEndChat()}>
-                      {ending ? <Spinner /> : null} End chat
-                    </Button>
-                  </div>
-                </div>
-              )}
               <form
                 className="flex items-end gap-2"
                 onSubmit={(event) => {
@@ -959,17 +957,6 @@ export default function PatientChatWidget() {
                   {sending ? <Spinner /> : <SendHorizontal className="h-4 w-4" />}
                 </Button>
               </form>
-              {!confirmingEnd && (
-                <div className="mt-1.5 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingEnd(true)}
-                    className="rounded text-xs text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    End chat
-                  </button>
-                </div>
-              )}
             </div>
           </>
         );
@@ -1008,6 +995,26 @@ export default function PatientChatWidget() {
           We typically reply in a few minutes.
         </div>
       )}
+
+      {/* Close (X) during an active conversation: warn that closing ends the chat. */}
+      <AlertDialog open={confirmingEnd} onOpenChange={(open) => !ending && setConfirmingEnd(open)}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>End this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Closing will end your conversation with the {careTeamName || "care team"}. You won't be able
+              to send more messages in it, but you can start a new chat any time. To keep this chat open,
+              use minimize instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={ending}>Keep chatting</AlertDialogCancel>
+            <Button variant="destructive" disabled={ending} onClick={() => void handleEndChat()}>
+              {ending ? <Spinner /> : null} End chat
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
