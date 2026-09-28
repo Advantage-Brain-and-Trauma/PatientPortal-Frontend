@@ -21,15 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -996,25 +987,41 @@ export default function PatientChatWidget() {
         </div>
       )}
 
-      {/* Close (X) during an active conversation: warn that closing ends the chat. */}
-      <AlertDialog open={confirmingEnd} onOpenChange={(open) => !ending && setConfirmingEnd(open)}>
-        <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>End this chat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Closing will end your conversation with the {careTeamName || "care team"}. You won't be able
-              to send more messages in it, but you can start a new chat any time. To keep this chat open,
-              use minimize instead.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={ending}>Keep chatting</AlertDialogCancel>
-            <Button variant="destructive" disabled={ending} onClick={() => void handleEndChat()}>
-              {ending ? <Spinner /> : null} End chat
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Close (X) during an active conversation: warn that closing ends the chat.
+          Rendered INSIDE the popup (not portaled) so it only covers the chat, not the site. */}
+      {confirmingEnd && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !ending) setConfirmingEnd(false);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="chat-end-title"
+            aria-describedby="chat-end-description"
+            className="w-full rounded-lg border border-border bg-card p-5 shadow-lg"
+          >
+            <h3 id="chat-end-title" className="font-heading text-base font-bold text-foreground">
+              End this chat?
+            </h3>
+            <p id="chat-end-description" className="mt-2 text-sm text-muted-foreground">
+              Closing will end your conversation with the {careTeamName || "care team"}. You won't be able to
+              send more messages in it, but you can start a new chat any time. To keep this chat open, use
+              minimize instead.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" autoFocus disabled={ending} onClick={() => setConfirmingEnd(false)}>
+                Keep chatting
+              </Button>
+              <Button variant="destructive" disabled={ending} onClick={() => void handleEndChat()}>
+                {ending ? <Spinner /> : null} End chat
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

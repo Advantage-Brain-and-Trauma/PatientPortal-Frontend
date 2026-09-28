@@ -66,7 +66,8 @@ and notable configuration/docs changes.
 >
 > **Follow-up (same day):** Moved "End chat" to the close (X) button per the developer. Removed the
 > "End chat" link under the composer and its inline confirmation. Clicking X during an active
-> conversation now opens a warning `AlertDialog` ("End this chat?" — Keep chatting / End chat);
+> conversation now opens an "End this chat?" warning (Keep chatting / End chat) rendered as an overlay
+> INSIDE the chat popup — not the portaled full-page `AlertDialog`, which dimmed the whole site;
 > confirming calls `close`, then closes and resets the popup. X on any other screen still just closes.
 > Minimize keeps the chat open. The "ended" screen now only covers a chat ended by the care team.
 >
