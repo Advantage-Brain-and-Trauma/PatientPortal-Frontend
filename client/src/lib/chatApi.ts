@@ -28,6 +28,8 @@ const chatHttp = axios.create({
 export const CHAT_POLL_INTERVAL_MS = 5000;
 /** Transcript page size (backend default is 50). */
 export const CHAT_PAGE_SIZE = 50;
+/** Backend rule: chat.message_max_length (default 5000 characters). */
+export const CHAT_MESSAGE_MAX_LENGTH = 5000;
 
 /**
  * Attachments (API reference r5): upload first via POST chat/attachments, then

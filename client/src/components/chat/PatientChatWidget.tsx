@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { format, isToday } from "date-fns";
 import {
@@ -40,6 +40,7 @@ import ChatApi, {
   CHAT_ATTACHMENT_EXTENSIONS,
   CHAT_ATTACHMENT_MAX_BYTES,
   CHAT_IMAGE_EXTENSIONS,
+  CHAT_MESSAGE_MAX_LENGTH,
   CHAT_POLL_INTERVAL_MS,
   ChatUploadedAttachment,
   ChatApiError,
@@ -164,6 +165,11 @@ const formatTime = (iso: string): string => {
   return isToday(date) ? format(date, "h:mm a") : format(date, "MMM d, h:mm a");
 };
 
+/** Show the character counter once the draft gets close to the limit. */
+const MESSAGE_COUNTER_THRESHOLD = CHAT_MESSAGE_MAX_LENGTH - 500;
+/** The composer grows with its content up to ~5 lines, then scrolls. */
+const COMPOSER_MAX_HEIGHT_PX = 120;
+
 const formatFileSize = (bytes: number): string => {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -272,6 +278,7 @@ export default function PatientChatWidget() {
   const [preview, setPreview] = useState<ChatAttachmentPreviewTarget | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   // The server reference for `pendingFile` once uploaded, so a failed SEND is
   // retried without uploading the same file again.
   const uploadedRef = useRef<{ file: File; uploaded: ChatUploadedAttachment } | null>(null);
@@ -741,6 +748,19 @@ export default function PatientChatWidget() {
     lastMessageIdRef.current = newest;
   }, [messages]);
 
+  // Auto-grow the composer with its content (up to COMPOSER_MAX_HEIGHT_PX, then
+  // scroll). Also shrinks back to one line after sending clears the draft.
+  useLayoutEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // border-box: scrollHeight excludes the border, so add it back.
+    const border = el.offsetHeight - el.clientHeight;
+    const needed = el.scrollHeight + border;
+    el.style.height = `${Math.min(needed, COMPOSER_MAX_HEIGHT_PX)}px`;
+    el.style.overflowY = needed > COMPOSER_MAX_HEIGHT_PX ? "auto" : "hidden";
+  }, [draft, view, isOpen, isMinimized]);
+
   // Re-anchor to the bottom when the thread is shown again after minimizing.
   useEffect(() => {
     if (isOpen && !isMinimized && view === "conversation") {
@@ -1050,6 +1070,18 @@ export default function PatientChatWidget() {
               <div ref={messagesEndRef} />
             </div>
             <div className="border-t border-border p-3">
+              {draft.length >= MESSAGE_COUNTER_THRESHOLD && (
+                <p
+                  id="chat-message-counter"
+                  aria-live="polite"
+                  className={cn(
+                    "mb-1 text-right text-[11px]",
+                    draft.length >= CHAT_MESSAGE_MAX_LENGTH ? "font-medium text-destructive" : "text-muted-foreground"
+                  )}
+                >
+                  {draft.length.toLocaleString()} / {CHAT_MESSAGE_MAX_LENGTH.toLocaleString()}
+                </p>
+              )}
               {pendingFile && (
                 <div className="mb-2 flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs">
                   <FileText className="h-4 w-4 shrink-0 text-primary" />
@@ -1112,6 +1144,7 @@ export default function PatientChatWidget() {
                   </Tooltip>
                 )}
                 <textarea
+                  ref={composerRef}
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={(event) => {
@@ -1120,11 +1153,24 @@ export default function PatientChatWidget() {
                       void handleSend();
                     }
                   }}
+                  onPaste={(event) => {
+                    // maxLength silently truncates a paste; tell the patient it happened.
+                    const target = event.currentTarget;
+                    const selected = target.selectionEnd - target.selectionStart;
+                    const pasted = event.clipboardData.getData("text").length;
+                    if (target.value.length - selected + pasted > CHAT_MESSAGE_MAX_LENGTH) {
+                      toast.warning(
+                        `Messages can be up to ${CHAT_MESSAGE_MAX_LENGTH.toLocaleString()} characters, so your pasted text was shortened.`
+                      );
+                    }
+                  }}
                   rows={1}
-                  maxLength={5000}
+                  maxLength={CHAT_MESSAGE_MAX_LENGTH}
                   placeholder="Type a message..."
                   aria-label="Message"
-                  className="max-h-28 min-h-9 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  aria-describedby={draft.length >= MESSAGE_COUNTER_THRESHOLD ? "chat-message-counter" : undefined}
+                  style={{ maxHeight: COMPOSER_MAX_HEIGHT_PX }}
+                  className="min-h-9 flex-1 resize-none overflow-y-hidden rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 />
                 <Button
                   type="submit"

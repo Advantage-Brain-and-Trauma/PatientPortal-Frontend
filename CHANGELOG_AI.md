@@ -102,6 +102,14 @@ and notable configuration/docs changes.
 > available" card; every view has a Download button. The viewer is portaled full-page on purpose (a
 > document needs more room than the 370px popup).
 >
+> **Follow-up (same day) — message length counter + auto-grow composer.** New
+> `CHAT_MESSAGE_MAX_LENGTH = 5000` in `chatApi.ts` (backend `chat.message_max_length`) replaces the
+> hard-coded `maxLength`. The composer textarea now grows with its content up to ~5 lines (120px) and
+> then scrolls, and shrinks back after sending (layout effect, border-box aware). A
+> "N / 5,000" counter (aria-live, linked via aria-describedby) appears from 4,500 characters and turns
+> red at the limit; pasting text that would exceed the limit shows a `sonner` warning toast since
+> `maxLength` truncates it silently.
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >
