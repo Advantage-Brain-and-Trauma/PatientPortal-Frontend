@@ -77,9 +77,10 @@ Default policy:
 - Prefer small, reviewable changes on a feature branch.
 
 ## Project Facts
-- GitHub repo: `mosetayesh/PatientPortal-frontend`
-- Remote: `git@github.com:mosetayesh/PatientPortal-frontend.git`
-- Main branch: `main`
+- GitHub repo: `Advantage-Brain-and-Trauma/PatientPortal-Frontend`
+- Remote: `https://github.com/Advantage-Brain-and-Trauma/PatientPortal-Frontend.git`
+- Main branch: `main`; active development branch: `staging`
+- Both branches auto-deploy on push — see "Git Workflow" below. There is no non-deploying branch.
 - Local dev command: `corepack pnpm run dev`
 - Local dev URL: `http://localhost:3000/`
 - Install command: `corepack pnpm install`
@@ -160,7 +161,9 @@ Current known setup note:
 - Do not create branches, open pull requests, or amend/revert commits on your own.
 - Never suggest or offer to commit or push; wait for an explicit instruction.
 - Do not revert the developer's changes or unrelated work.
-- Deploy context (do not trigger): pushing to `staging` auto-deploys to Cloudways via `.github/workflows/deploy-staging.yml` (it rsyncs `dist/public/`). Treat any push as deploy-affecting and leave it to the developer.
+- Deploy context (do not trigger): **both** long-lived branches deploy on push. Treat any push, and any merge into either branch, as deploy-affecting and leave it to the developer.
+  - `staging` → `.github/workflows/deploy-staging.yml`: GitHub-hosted runner, Node 22 + pnpm (corepack), `pnpm install --frozen-lockfile` + `pnpm run build`, then SSH+rsync of `dist/public/` to Cloudways (`/home/master/applications/rxtdnqswpd/public_html`).
+  - `main` → `.github/workflows/deploy.yml` ("Auto Deploy Patient Portal"): self-hosted **production** runner. Hard-resets `/var/www/html/patient-portal` to `origin/main` (`git reset --hard` + `git clean -fd`), installs, builds, then restarts Apache. The hard reset discards anything sitting on the production box.
 
 ## Output Required
 When finished, provide:

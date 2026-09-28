@@ -7,10 +7,14 @@ metadata:
   originSessionId: 75adad51-7a9f-4d48-ae93-ece92d06f5dd
 ---
 
-**Repo & remote (current, verified 2026-07-02):** `origin = https://github.com/dev-saman/PatientPortal-Frontend.git`. Branches: `main` and `staging`; active dev branch is **`staging`**.
-> ⚠️ `AGENTS.md` states the repo is `mosetayesh/PatientPortal-frontend` and describes a `main`→`deploy.yml` production deploy. Those are **stale** — trust the live git remote and `.github/workflows/` over AGENTS.md.
+**Repo & remote (re-verified 2026-09-03):** `origin = https://github.com/Advantage-Brain-and-Trauma/PatientPortal-Frontend.git`. Branches: `main` and `staging`; active dev branch is **`staging`**.
+> ⚠️ The remote moved since 2026-07-02 (it was `dev-saman/PatientPortal-Frontend`). Always trust the live `git remote -v` and `.github/workflows/` over any doc, including this one.
 
-**CI/CD:** the only workflow is `.github/workflows/deploy-staging.yml` — **push to `staging` auto-deploys to Cloudways** via SSH+rsync (uploads `dist/public/` to `/home/master/applications/rxtdnqswpd/public_html`, concurrency-cancel-in-progress). CI uses Node 22 + pnpm (corepack) + `pnpm install --frozen-lockfile` + `pnpm run build`. There is no separate lint/test step in CI. Do not push to `staging` casually — it deploys.
+**CI/CD:** two workflows — **both branches deploy on push**, so there is no non-deploying branch.
+- `.github/workflows/deploy-staging.yml` — push to `staging` auto-deploys to **Cloudways** via SSH+rsync (uploads `dist/public/` to `/home/master/applications/rxtdnqswpd/public_html`, concurrency-cancel-in-progress). GitHub-hosted runner, Node 22 + pnpm (corepack) + `pnpm install --frozen-lockfile` + `pnpm run build`.
+- `.github/workflows/deploy.yml` ("Auto Deploy Patient Portal") — push to `main` deploys to **production** on a self-hosted runner: hard-resets `/var/www/html/patient-portal` to `origin/main` (`git reset --hard` + `git clean -fd`), `pnpm install --no-frozen-lockfile`, `pnpm run build`, fixes permissions, restarts Apache. The hard reset discards anything sitting on the production box.
+
+There is no lint/test step in either workflow. Do not push to `main` or `staging` casually — both deploy.
 
 **Commands:** dev `pnpm run dev` (port 3000, `--host`); type-check `pnpm run check`; build `pnpm run build` (vite build → `dist/public`, plus esbuild bundling `server/index.ts` → `dist`); format `pnpm run format`. Prod start `pnpm run start` (`NODE_ENV=production node dist/index.js`). Use `corepack pnpm ...` if pnpm isn't on PATH.
 

@@ -18,6 +18,35 @@ and notable configuration/docs changes.
 
 ---
 
+## 2026-09-03
+
+### Docs: correct stale repo/deploy facts and seed the Claude memory index
+> **What:** The project's Claude memory directory was empty, so nothing loaded automatically at
+> session start — all accumulated context lived only in `claude_docs/` and `AGENTS.md`, which
+> `AGENTS.md` expects the agent to open by hand. Seeded three memory files plus a `MEMORY.md`
+> index pointing at the in-repo knowledge base, the plan-first / no-git-writes / always-log
+> conventions, and the deploy behavior.
+>
+> While verifying those facts, two docs turned out to be **stale**. `AGENTS.md` named the repo
+> `mosetayesh/PatientPortal-frontend`; `claude_docs/project-facts.md` named
+> `dev-saman/PatientPortal-Frontend`. The live remote is
+> **`Advantage-Brain-and-Trauma/PatientPortal-Frontend`**. `project-facts.md` also claimed
+> `deploy-staging.yml` was "the only workflow" — `.github/workflows/deploy.yml` also exists and
+> **auto-deploys `main` to production** on a self-hosted runner, hard-resetting
+> `/var/www/html/patient-portal` to `origin/main` and restarting Apache. Both files now record
+> that **both branches deploy on push** and that there is no non-deploying branch.
+> The now-resolved "AGENTS.md is stale" warning in `project-facts.md` was replaced with a note
+> that the remote moved and that `git remote -v` beats any doc.
+>
+> **Files/areas:** `AGENTS.md` (Project Facts block; Git Workflow deploy-context bullet);
+> `claude_docs/project-facts.md` (repo/remote + CI/CD sections). Memory files live outside the
+> repo, under the user's Claude project memory directory.
+>
+> **Auth / case-scoping / patient-data:** None — documentation only, no application code, API,
+> auth, or case-scoping behavior touched. No build or type-check impact.
+
+---
+
 ## 2026-08-13
 
 ### Restrict the information shown on the preauthorization card
