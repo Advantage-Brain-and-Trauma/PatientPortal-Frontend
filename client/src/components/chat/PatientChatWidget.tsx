@@ -57,6 +57,8 @@ type ChatView =
   | "conversation"
   | "no_locations"
   | "no_cases"
+  | "open_elsewhere"
+  | "ended"
   | "session_expired"
   | "error";
 
@@ -98,6 +100,21 @@ const describeError = (error: unknown): { title: string; message: string } => {
         title: "Chat unavailable",
         message: "Chat isn't available right now. Please try again later.",
       };
+    case "closed":
+      return {
+        title: "Chat ended",
+        message: "This conversation has ended. Start a new chat to continue.",
+      };
+    case "open_elsewhere":
+      return {
+        title: "Conversation already open",
+        message: "You already have an open conversation. End it before starting another.",
+      };
+    case "conflict":
+      return {
+        title: "Please try again",
+        message: "This conversation is busy right now. Please try again in a moment.",
+      };
     default:
       return {
         title: "Something went wrong",
@@ -108,6 +125,17 @@ const describeError = (error: unknown): { title: string; message: string } => {
 
 const isSessionExpired = (error: unknown) =>
   error instanceof ChatApiError && error.kind === "session_expired";
+
+const isClosedConversation = (error: unknown) =>
+  error instanceof ChatApiError && error.kind === "closed";
+
+/** Header / message label for the team: the API's department peer name, else "{Location} Care Team". */
+const careTeamNameFor = (conversation: ChatConversation, department: string): string => {
+  if (conversation.peer?.external_type === "department" && conversation.peer.name) {
+    return conversation.peer.name;
+  }
+  return department ? `${department} Care Team` : "Care Team";
+};
 
 /** "YYYY-MM-DD" -> "MM/DD/YYYY" without timezone shifts (same as the sidebar). */
 const formatDoi = (raw: string | null | undefined): string => {
@@ -171,7 +199,14 @@ export default function PatientChatWidget() {
   const [selectedCaseId, setSelectedCaseId] = useState("");
 
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
-  const [conversationDepartment, setConversationDepartment] = useState("");
+  const [careTeamName, setCareTeamName] = useState("");
+  // One open conversation per patient: the thread in the way, and the case the
+  // patient was trying to open when the backend answered 409.
+  const [otherOpen, setOtherOpen] = useState<{ uuid: string; case_id: number | null } | null>(null);
+  const [pendingCase, setPendingCase] = useState<ChatCase | null>(null);
+  const [endedByPatient, setEndedByPatient] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [earliestPage, setEarliestPage] = useState(1);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
@@ -230,7 +265,12 @@ export default function PatientChatWidget() {
     setSelectedLocation("");
     setSelectedCaseId("");
     setConversation(null);
-    setConversationDepartment("");
+    setCareTeamName("");
+    setOtherOpen(null);
+    setPendingCase(null);
+    setEndedByPatient(false);
+    setConfirmingEnd(false);
+    setEnding(false);
     setMessages([]);
     setEarliestPage(1);
     setDraft("");
@@ -287,6 +327,21 @@ export default function PatientChatWidget() {
     }
   }, []);
 
+  /** Show an already-known conversation: load its transcript, then switch to the thread. */
+  const enterConversation = useCallback(
+    async (target: ChatConversation, department: string, generation: number) => {
+      conversationUuidRef.current = target.uuid;
+      setConversation(target);
+      setCareTeamName(careTeamNameFor(target, department));
+      setConfirmingEnd(false);
+      setSendError("");
+      await loadLatestMessages(target.uuid);
+      if (generation !== generationRef.current) return;
+      setView("conversation");
+    },
+    [loadLatestMessages]
+  );
+
   const openConversation = useCallback(
     async (chatCase: ChatCase) => {
       const generation = generationRef.current;
@@ -295,20 +350,42 @@ export default function PatientChatWidget() {
       try {
         const opened = await ChatApi.openConversation(chatCase.case_id, chatCase.department);
         if (generation !== generationRef.current) return;
-        conversationUuidRef.current = opened.uuid;
-        setConversation(opened);
-        setConversationDepartment(chatCase.department);
-        await loadLatestMessages(opened.uuid);
-        if (generation !== generationRef.current) return;
-        setView("conversation");
+        await enterConversation(opened, chatCase.department, generation);
       } catch (error) {
         if (generation !== generationRef.current) return;
         conversationUuidRef.current = null;
         setConversation(null);
+        if (error instanceof ChatApiError && error.kind === "open_elsewhere" && error.openConversation) {
+          // One open conversation per patient: offer to resume or end the other one.
+          setOtherOpen(error.openConversation);
+          setPendingCase(chatCase);
+          setView("open_elsewhere");
+          return;
+        }
         showError(error, () => void openConversation(chatCase));
       }
     },
-    [loadLatestMessages, showError]
+    [enterConversation, showError]
+  );
+
+  /** Resume a thread that is still open (from the inbox, or the 409 payload). */
+  const resumeConversation = useCallback(
+    async (target: ChatConversation, allCases: ChatCase[]) => {
+      const generation = generationRef.current;
+      const department =
+        allCases.find((chatCase) => chatCase.case_id === target.case_id)?.department || "";
+      setSelectedCaseId(target.case_id ? String(target.case_id) : "");
+      setView("connecting");
+      try {
+        await enterConversation(target, department, generation);
+      } catch (error) {
+        if (generation !== generationRef.current) return;
+        conversationUuidRef.current = null;
+        setConversation(null);
+        showError(error, () => void resumeConversation(target, allCases));
+      }
+    },
+    [enterConversation, showError]
   );
 
   const applyLocation = useCallback(
@@ -367,6 +444,22 @@ export default function PatientChatWidget() {
       setCases(fetchedCases);
       setLocations(uniqueLocations);
 
+      // A patient may have only ONE open conversation. If one exists, resume it
+      // directly instead of asking for a location/case again. Best-effort: if
+      // the inbox call fails, the 409 on open still routes to the same place.
+      let openThread: ChatConversation | undefined;
+      try {
+        const conversations = await ChatApi.getConversations();
+        openThread = conversations.find((item) => !item.closed_at);
+      } catch (error) {
+        if (isSessionExpired(error)) throw error;
+      }
+      if (generation !== generationRef.current) return;
+      if (openThread) {
+        void resumeConversation(openThread, fetchedCases);
+        return;
+      }
+
       if (uniqueLocations.length === 0) {
         setView("no_locations");
       } else if (uniqueLocations.length === 1) {
@@ -380,7 +473,72 @@ export default function PatientChatWidget() {
     } finally {
       busyRef.current = false;
     }
-  }, [applyLocation, showError, user?.email]);
+  }, [applyLocation, resumeConversation, showError, user?.email]);
+
+  /** 409 screen: continue the conversation that is already open. */
+  const handleContinueOther = () => {
+    if (!otherOpen) return;
+    void resumeConversation(
+      {
+        uuid: otherOpen.uuid,
+        type: "direct",
+        case_id: otherOpen.case_id,
+        closed_at: null,
+        last_message_at: null,
+        peer: null,
+      },
+      cases
+    );
+  };
+
+  /** 409 screen: end the open conversation, then open the one the patient chose. */
+  const handleEndOtherAndStart = async () => {
+    if (!otherOpen || !pendingCase || ending) return;
+    const generation = generationRef.current;
+    const target = pendingCase;
+    setEnding(true);
+    try {
+      await ChatApi.closeConversation(otherOpen.uuid);
+      if (generation !== generationRef.current) return;
+      setOtherOpen(null);
+      setPendingCase(null);
+      void openConversation(target);
+    } catch (error) {
+      if (generation !== generationRef.current) return;
+      showError(error, () => void handleEndOtherAndStart());
+    } finally {
+      setEnding(false);
+    }
+  };
+
+  /** Patient ends the current conversation (final on the backend). */
+  const handleEndChat = async () => {
+    const uuid = conversationUuidRef.current;
+    if (!uuid || ending) return;
+    setEnding(true);
+    try {
+      await ChatApi.closeConversation(uuid);
+      if (conversationUuidRef.current !== uuid) return;
+      setConfirmingEnd(false);
+      setEndedByPatient(true);
+      setView("ended");
+    } catch (error) {
+      if (isSessionExpired(error)) {
+        setView("session_expired");
+      } else {
+        setSendError(describeError(error).message);
+        setConfirmingEnd(false);
+      }
+    } finally {
+      setEnding(false);
+    }
+  };
+
+  /** From an ended / blocked state: back to the start of the flow. */
+  const handleStartOver = () => {
+    resetFlow();
+    void startFlow();
+  };
 
   const handleLocationContinue = () => {
     if (selectedLocation) applyLocation(selectedLocation, cases);
@@ -411,6 +569,10 @@ export default function PatientChatWidget() {
     } catch (error) {
       if (isSessionExpired(error)) {
         setView("session_expired");
+      } else if (isClosedConversation(error)) {
+        // The conversation was ended (e.g. by the care team) — it can't be written to again.
+        setEndedByPatient(false);
+        setView("ended");
       } else {
         setSendError(describeError(error).message);
       }
@@ -503,7 +665,10 @@ export default function PatientChatWidget() {
   if (!isVisible) return null;
 
   const inConversation = view === "conversation" && conversation;
-  const headerTitle = inConversation ? `${conversationDepartment} Care Team` : "Patient Support";
+  const headerTitle = inConversation ? careTeamName : "Patient Support";
+  const otherOpenCase = otherOpen
+    ? cases.find((chatCase) => chatCase.case_id === otherOpen.case_id)
+    : undefined;
   const canGoBackToLocations = locations.length > 1;
 
   // ---- Closed / minimized: floating launcher -------------------------------
@@ -644,6 +809,46 @@ export default function PatientChatWidget() {
           </div>
         );
 
+      case "open_elsewhere":
+        return (
+          <div className="flex flex-1 flex-col justify-center p-6">
+            <StateIcon icon={MessagesSquare} />
+            <StateText title="You already have an open conversation">
+              You can have one conversation open at a time
+              {otherOpenCase
+                ? ` (${otherOpenCase.department}, ${caseLabel(otherOpenCase)}).`
+                : "."}{" "}
+              Continue it, or end it to start this one.
+            </StateText>
+            <Button className="mt-5 w-full" disabled={ending} onClick={handleContinueOther}>
+              Continue that conversation
+            </Button>
+            <Button
+              variant="outline"
+              className="mt-2 w-full"
+              disabled={ending}
+              onClick={() => void handleEndOtherAndStart()}
+            >
+              {ending ? <Spinner /> : null} End it & start this one
+            </Button>
+          </div>
+        );
+
+      case "ended":
+        return (
+          <div className="flex flex-1 flex-col justify-center p-6">
+            <StateIcon icon={MessageCircle} />
+            <StateText title={endedByPatient ? "Chat ended" : "This conversation has ended"}>
+              {endedByPatient
+                ? "Thanks for reaching out. You can start a new chat any time."
+                : "Your care team has closed this conversation. Start a new chat to continue."}
+            </StateText>
+            <Button className="mt-5 w-full" onClick={handleStartOver}>
+              Start a new chat
+            </Button>
+          </div>
+        );
+
       case "session_expired":
         return (
           <div className="flex flex-1 flex-col justify-center p-6">
@@ -697,7 +902,7 @@ export default function PatientChatWidget() {
                 return (
                   <div key={message.id} className={cn("flex flex-col", mine ? "items-end" : "items-start")}>
                     <span className="mb-1 flex gap-2 text-[11px] text-muted-foreground">
-                      {!mine && <span>{conversationDepartment} Care Team</span>}
+                      {!mine && <span>{careTeamName}</span>}
                       <span>{formatTime(message.created_at)}</span>
                     </span>
                     <div
@@ -715,6 +920,19 @@ export default function PatientChatWidget() {
             </div>
             <div className="border-t border-border p-3">
               {sendError && <p className="mb-2 text-xs text-destructive">{sendError}</p>}
+              {confirmingEnd && (
+                <div className="mb-2 rounded-lg bg-muted p-3 text-xs text-foreground">
+                  <p>End this chat? You won't be able to send more messages in it.</p>
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" disabled={ending} onClick={() => setConfirmingEnd(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" size="sm" disabled={ending} onClick={() => void handleEndChat()}>
+                      {ending ? <Spinner /> : null} End chat
+                    </Button>
+                  </div>
+                </div>
+              )}
               <form
                 className="flex items-end gap-2"
                 onSubmit={(event) => {
@@ -741,6 +959,17 @@ export default function PatientChatWidget() {
                   {sending ? <Spinner /> : <SendHorizontal className="h-4 w-4" />}
                 </Button>
               </form>
+              {!confirmingEnd && (
+                <div className="mt-1.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingEnd(true)}
+                    className="rounded text-xs text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    End chat
+                  </button>
+                </div>
+              )}
             </div>
           </>
         );

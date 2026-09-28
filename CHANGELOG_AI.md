@@ -49,6 +49,21 @@ and notable configuration/docs changes.
 > developer's request; the header is now a single row (support icon + title, minimize/close).
 > Also removed the heart icon from the "Let's chat!" welcome screen.
 >
+> **Follow-up (same day) — API reference r2: End chat, sessions, one open conversation per patient.**
+> `chatApi.ts`: added `getConversations()` (`GET chat/conversations`) and `closeConversation(uuid)`
+> (`POST chat/conversations/{uuid}/close`); 409s are now classified as `open_elsewhere` (carries
+> `open_conversation {uuid, case_id}`), `closed` (`closed:true`) or generic `conflict`;
+> `session` / `closed_at` added to the conversation type. Widget: "Start chat" first checks the inbox
+> and, if the patient has an open thread (`closed_at` null), resumes it directly instead of asking for
+> location/case again. If opening a case returns 409 `open_elsewhere`, a new screen offers "Continue
+> that conversation" or "End it & start this one" (close, then open the chosen case). The thread has
+> an "End chat" action with inline confirmation -> "Chat ended" screen -> "Start a new chat" (the
+> backend opens the next session). A send refused with 409 `closed` (ended by the care team) shows
+> "This conversation has ended" with "Start a new chat". The header/message label now uses the API's
+> department peer name ("<City> Care Team"), falling back to "{department} Care Team". A staff-ended
+> chat is detected on the patient's next send (no extra polling of the inbox). Note: the sheet marks
+> this backend change set as NOT YET DEPLOYED (two ALTERs + backfill pending).
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >

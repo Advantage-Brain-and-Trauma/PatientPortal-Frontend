@@ -36,13 +36,21 @@ export type ChatErrorKind =
   | "validation"
   | "rate_limited"
   | "network"
-  | "server";
+  | "server"
+  /** 409: the patient already has a DIFFERENT open conversation (one open per patient). */
+  | "open_elsewhere"
+  /** 409: the conversation has been ended (closed:true) and can no longer be written to. */
+  | "closed"
+  /** 409: any other conflict (e.g. the staff first-responder lock). */
+  | "conflict";
 
 export class ChatApiError extends Error {
   kind: ChatErrorKind;
   status?: number;
   /** Backend-provided message, only kept for 422 validation errors (plain strings). */
   detail?: string;
+  /** For `open_elsewhere`: the conversation that is already open. */
+  openConversation?: { uuid: string; case_id: number | null };
 
   constructor(kind: ChatErrorKind, status?: number, detail?: string) {
     super(kind);
@@ -68,6 +76,10 @@ export interface ChatConversation {
   uuid: string;
   type: string;
   case_id: number | null;
+  /** 1 until a thread for this case is ended; the next chat about the case is session 2, 3, ... */
+  session?: number;
+  /** Non-null means ENDED: still readable, never writable again. */
+  closed_at?: string | null;
   last_message_at: string | null;
   peer: ChatPeer | null;
 }
@@ -102,6 +114,19 @@ const toChatError = (error: unknown): ChatApiError => {
     if (status === 403) return new ChatApiError("forbidden", status);
     if (status === 404) return new ChatApiError("not_found", status);
     if (status === 429) return new ChatApiError("rate_limited", status);
+    if (status === 409) {
+      const body = error.response?.data as any;
+      if (body?.open_conversation?.uuid) {
+        const conflict = new ChatApiError("open_elsewhere", status);
+        conflict.openConversation = {
+          uuid: String(body.open_conversation.uuid),
+          case_id: body.open_conversation.case_id ?? null,
+        };
+        return conflict;
+      }
+      if (body?.closed === true) return new ChatApiError("closed", status);
+      return new ChatApiError("conflict", status);
+    }
     if (status === 422) {
       const body = error.response?.data as any;
       const detail = typeof body?.message === "string" ? body.message : undefined;
@@ -190,7 +215,28 @@ const ChatApi = {
     return Array.isArray(data?.cases) ? data.cases : [];
   },
 
-  /** Find-or-create the thread for a case. Department is taken from the same case row. */
+  /** This patient's threads, newest activity first (open and ended). */
+  getConversations: async (): Promise<ChatConversation[]> => {
+    const data = await chatRequest<{ success: boolean; conversations?: ChatConversation[] }>({
+      method: "GET",
+      url: "chat/conversations",
+    });
+    return Array.isArray(data?.conversations) ? data.conversations : [];
+  },
+
+  /** Patient ends the conversation. Final and idempotent. */
+  closeConversation: async (uuid: string): Promise<void> => {
+    const data = await chatRequest<{ success: boolean }>({
+      method: "POST",
+      url: `chat/conversations/${encodeURIComponent(uuid)}/close`,
+    });
+    if (!data?.success) throw new ChatApiError("server");
+  },
+
+  /**
+   * Open (or resume) the thread for a case. Department is taken from the same
+   * case row. 409 `open_elsewhere` when a different conversation is still open.
+   */
   openConversation: async (caseId: number, department: string): Promise<ChatConversation> => {
     const data = await chatRequest<{ success: boolean; conversation?: ChatConversation }>({
       method: "POST",
