@@ -81,6 +81,19 @@ and notable configuration/docs changes.
 > (FormData, larger timeout). Messages carrying `attachment` now render a file row; only absolute
 > http(s) URLs become links (no javascript:/data:/relative URLs).
 >
+> **Follow-up (same day) — attachments wired to the real API (reference r5).** `CHAT_ATTACHMENTS_ENABLED`
+> is now `true`. `ChatApi.uploadAttachment(file, onProgress)` -> `POST chat/attachments` (multipart
+> field `file`, chat token, 10-min timeout, upload progress); the Content-Type is set to
+> multipart/form-data explicitly because axios 1.x would otherwise JSON-serialise FormData under the
+> client's JSON default. The returned `attachment` path is then sent via `sendMessage(uuid, text,
+> {path, type})` with `message_type` image|file; `message` is omitted for a file-only message. If the
+> upload succeeded but the send failed, a retry reuses the uploaded path instead of re-uploading.
+> Allowed types now match the backend rule (jpg/jpeg/png/gif/webp/heic/heif/pdf/doc/docx/xls/xlsx/csv,
+> 100 MB). New error kind `too_large` for the web server's HTML 413. Chip shows "Uploading N%".
+> Messages render `attachment_url` / `attachment_name` when present. Backend notes: files are stored
+> on the PUBLIC disk (no auth/expiry, per the sheet a deliberate decision); nginx
+> `client_max_body_size` defaults to 1 MB, so large uploads 413 until the servers are configured.
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >

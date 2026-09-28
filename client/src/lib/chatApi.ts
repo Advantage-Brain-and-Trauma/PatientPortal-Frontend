@@ -30,16 +30,21 @@ export const CHAT_POLL_INTERVAL_MS = 5000;
 export const CHAT_PAGE_SIZE = 50;
 
 /**
- * Attachments. backend-pp has NO patient upload endpoint yet (the API reference
- * says not to surface a file control until it exists), so the paperclip is
- * shown disabled. When the endpoint ships: implement `uploadAttachment` below
- * against the real contract, then flip this flag to true.
+ * Attachments (API reference r5): upload first via POST chat/attachments, then
+ * send the returned path as `attachment` on the normal send call. Set to false
+ * to show the paperclip disabled again.
  */
-export const CHAT_ATTACHMENTS_ENABLED = false;
-/** Max upload size (confirmed by the developer: 100 MB). */
+export const CHAT_ATTACHMENTS_ENABLED = true;
+/** Backend rule: chat.attachments.max_kb = 102400 (100 MB). */
 export const CHAT_ATTACHMENT_MAX_BYTES = 100 * 1024 * 1024;
-/** Allowed file types — adjust to the backend's validation rule once known. */
-export const CHAT_ATTACHMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "heic", "doc", "docx"];
+/** Backend rule: mimes:jpg,jpeg,png,gif,webp,heic,heif,pdf,doc,docx,xls,xlsx,csv (checked by contents). */
+export const CHAT_ATTACHMENT_EXTENSIONS = [
+  "jpg", "jpeg", "png", "gif", "webp", "heic", "heif",
+  "pdf", "doc", "docx", "xls", "xlsx", "csv",
+];
+export const CHAT_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"];
+/** Large uploads need far longer than the 30s default. */
+const CHAT_UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 export const CHAT_ATTACHMENT_ACCEPT = CHAT_ATTACHMENT_EXTENSIONS.map((ext) => `.${ext}`).join(",");
 
 export type ChatErrorKind =
@@ -48,6 +53,8 @@ export type ChatErrorKind =
   | "not_found"
   | "validation"
   | "rate_limited"
+  /** 413 from the web server (HTML, not JSON): upload exceeded the server's body limit. */
+  | "too_large"
   | "network"
   | "server"
   /** 409: the patient already has a DIFFERENT open conversation (one open per patient). */
@@ -102,9 +109,23 @@ export interface ChatMessage {
   sender: { uuid: string; external_type: string; name: string };
   message: string | null;
   message_type: string;
+  /** Stored path, as sent. */
   attachment: string | null;
+  /** Public URL resolved by the portal (no auth, no expiry). */
+  attachment_url?: string | null;
+  /** Original file name for display. */
+  attachment_name?: string | null;
   read_at: string | null;
   created_at: string;
+}
+
+/** Response of POST chat/attachments. `attachment` is what the send call takes. */
+export interface ChatUploadedAttachment {
+  attachment: string;
+  url: string;
+  name: string;
+  size: number;
+  extension: string;
 }
 
 export interface ChatMessagePage {
@@ -127,6 +148,7 @@ const toChatError = (error: unknown): ChatApiError => {
     if (status === 403) return new ChatApiError("forbidden", status);
     if (status === 404) return new ChatApiError("not_found", status);
     if (status === 429) return new ChatApiError("rate_limited", status);
+    if (status === 413) return new ChatApiError("too_large", status);
     if (status === 409) {
       const body = error.response?.data as any;
       if (body?.open_conversation?.uuid) {
@@ -272,20 +294,47 @@ const ChatApi = {
   },
 
   /**
-   * PLACEHOLDER — the backend upload endpoint does not exist yet. Only reachable
-   * when CHAT_ATTACHMENTS_ENABLED is true. When wiring it: use the real path and
-   * field names, send FormData (no manual Content-Type), and raise `timeout` for
-   * large files (the shared 30s timeout is too short for 100 MB).
+   * Upload a file (multipart field `file`). Not conversation-scoped: nothing is
+   * attached until the returned `attachment` path is sent with a message.
    */
-  uploadAttachment: async (_uuid: string, _file: File, _message?: string): Promise<ChatMessage> => {
-    throw new ChatApiError("not_found");
+  uploadAttachment: async (
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ChatUploadedAttachment> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const data = await chatRequest<{ success: boolean; attachment?: ChatUploadedAttachment }>({
+      method: "POST",
+      url: "chat/attachments",
+      data: formData,
+      // Must NOT stay application/json: axios would serialise the FormData to
+      // JSON. With multipart/form-data the browser sets the boundary itself.
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: CHAT_UPLOAD_TIMEOUT_MS,
+      onUploadProgress: (event) => {
+        if (onProgress && event.total) onProgress(Math.round((event.loaded / event.total) * 100));
+      },
+    });
+    if (!data?.success || !data.attachment?.attachment) throw new ChatApiError("server");
+    return data.attachment;
   },
 
-  sendMessage: async (uuid: string, message: string): Promise<ChatMessage> => {
+  /** Send a message. With an `attachment` path, `message` may be empty (file-only message). */
+  sendMessage: async (
+    uuid: string,
+    message: string,
+    attachment?: { path: string; type: "image" | "file" }
+  ): Promise<ChatMessage> => {
+    const body: Record<string, string> = {};
+    if (message) body.message = message;
+    if (attachment) {
+      body.attachment = attachment.path;
+      body.message_type = attachment.type;
+    }
     const data = await chatRequest<{ success: boolean; message_data?: ChatMessage }>({
       method: "POST",
       url: `chat/conversations/${encodeURIComponent(uuid)}/messages`,
-      data: { message },
+      data: body,
     });
     if (!data?.success || !data.message_data?.id) throw new ChatApiError("server");
     return data.message_data;

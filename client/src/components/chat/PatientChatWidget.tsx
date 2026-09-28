@@ -37,7 +37,9 @@ import ChatApi, {
   CHAT_ATTACHMENT_ACCEPT,
   CHAT_ATTACHMENT_EXTENSIONS,
   CHAT_ATTACHMENT_MAX_BYTES,
+  CHAT_IMAGE_EXTENSIONS,
   CHAT_POLL_INTERVAL_MS,
+  ChatUploadedAttachment,
   ChatApiError,
   ChatCase,
   ChatConversation,
@@ -95,6 +97,11 @@ const describeError = (error: unknown): { title: string; message: string } => {
       return {
         title: "Connection problem",
         message: "We couldn't reach the chat service. Check your connection and try again.",
+      };
+    case "too_large":
+      return {
+        title: "File too large",
+        message: "This file is too large to upload. Please choose a smaller file.",
       };
     case "rate_limited":
       return {
@@ -260,7 +267,17 @@ export default function PatientChatWidget() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // The server reference for `pendingFile` once uploaded, so a failed SEND is
+  // retried without uploading the same file again.
+  const uploadedRef = useRef<{ file: File; uploaded: ChatUploadedAttachment } | null>(null);
+
+  const selectPendingFile = (file: File | null) => {
+    uploadedRef.current = null;
+    setUploadProgress(null);
+    setPendingFile(file);
+  };
 
   // Guards against double-clicks starting parallel flows, and against stale
   // responses landing after the conversation changed or the widget reset.
@@ -323,6 +340,8 @@ export default function PatientChatWidget() {
     setDraft("");
     setSendError("");
     setPendingFile(null);
+    setUploadProgress(null);
+    uploadedRef.current = null;
   }, []);
 
   // A different (or no) patient signed in: drop all chat state and the token.
@@ -611,12 +630,12 @@ export default function PatientChatWidget() {
     if (!file) return;
     const problem = validateAttachment(file);
     if (problem) {
-      setPendingFile(null);
+      selectPendingFile(null);
       setSendError(problem);
       return;
     }
     setSendError("");
-    setPendingFile(file);
+    selectPendingFile(file);
   };
 
   const handleSend = async () => {
@@ -627,13 +646,28 @@ export default function PatientChatWidget() {
     setSending(true);
     setSendError("");
     try {
-      const sent = file
-        ? await ChatApi.uploadAttachment(uuid, file, text || undefined)
-        : await ChatApi.sendMessage(uuid, text);
+      let attachment: { path: string; type: "image" | "file" } | undefined;
+      if (file) {
+        // Upload first (separate call), then send the returned path.
+        let uploaded =
+          uploadedRef.current?.file === file ? uploadedRef.current.uploaded : null;
+        if (!uploaded) {
+          setUploadProgress(0);
+          uploaded = await ChatApi.uploadAttachment(file, (percent) => setUploadProgress(percent));
+          uploadedRef.current = { file, uploaded };
+        }
+        setUploadProgress(null);
+        const extension = (uploaded.extension || file.name.split(".").pop() || "").toLowerCase();
+        attachment = {
+          path: uploaded.attachment,
+          type: CHAT_IMAGE_EXTENSIONS.includes(extension) ? "image" : "file",
+        };
+      }
+      const sent = await ChatApi.sendMessage(uuid, text, attachment);
       if (conversationUuidRef.current !== uuid) return;
       setMessages((current) => mergeMessages(current, [sent]));
       setDraft("");
-      setPendingFile(null);
+      selectPendingFile(null);
       void refreshMessages().catch(() => {});
     } catch (error) {
       if (isSessionExpired(error)) {
@@ -645,6 +679,7 @@ export default function PatientChatWidget() {
         setSendError(describeError(error).message);
       }
     } finally {
+      setUploadProgress(null);
       setSending(false);
     }
   };
@@ -983,8 +1018,9 @@ export default function PatientChatWidget() {
                       )}
                     >
                       {message.attachment && (() => {
-                        const href = safeAttachmentUrl(message.attachment);
-                        const name = attachmentName(message.attachment);
+                        // Prefer the portal-resolved public URL and original name (r5).
+                        const href = safeAttachmentUrl(message.attachment_url || message.attachment);
+                        const name = message.attachment_name || attachmentName(message.attachment);
                         const content = (
                           <>
                             <FileText className="h-4 w-4 shrink-0 text-primary" />
@@ -1017,12 +1053,14 @@ export default function PatientChatWidget() {
                 <div className="mb-2 flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs">
                   <FileText className="h-4 w-4 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
-                  <span className="shrink-0 text-muted-foreground">{formatFileSize(pendingFile.size)}</span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {uploadProgress !== null ? `Uploading ${uploadProgress}%` : formatFileSize(pendingFile.size)}
+                  </span>
                   <button
                     type="button"
                     aria-label="Remove attachment"
                     disabled={sending}
-                    onClick={() => setPendingFile(null)}
+                    onClick={() => selectPendingFile(null)}
                     className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <X className="h-3.5 w-3.5" />
