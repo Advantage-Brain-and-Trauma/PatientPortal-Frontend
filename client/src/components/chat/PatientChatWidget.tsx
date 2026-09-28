@@ -12,6 +12,7 @@ import {
   MessageCircle,
   MessagesSquare,
   Minus,
+  Paperclip,
   RotateCw,
   SendHorizontal,
   Users,
@@ -30,7 +31,12 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import Apis from "@/lib/Apis";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ChatApi, {
+  CHAT_ATTACHMENTS_ENABLED,
+  CHAT_ATTACHMENT_ACCEPT,
+  CHAT_ATTACHMENT_EXTENSIONS,
+  CHAT_ATTACHMENT_MAX_BYTES,
   CHAT_POLL_INTERVAL_MS,
   ChatApiError,
   ChatCase,
@@ -149,6 +155,47 @@ const formatTime = (iso: string): string => {
   return isToday(date) ? format(date, "h:mm a") : format(date, "MMM d, h:mm a");
 };
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+};
+
+/** Client-side check before upload; the backend remains the source of truth. */
+const validateAttachment = (file: File): string => {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  if (!CHAT_ATTACHMENT_EXTENSIONS.includes(extension)) {
+    return `This file type isn't supported. Allowed: ${CHAT_ATTACHMENT_EXTENSIONS.join(", ").toUpperCase()}.`;
+  }
+  if (file.size > CHAT_ATTACHMENT_MAX_BYTES) {
+    return `This file is too large. The maximum size is ${formatFileSize(CHAT_ATTACHMENT_MAX_BYTES)}.`;
+  }
+  return "";
+};
+
+/**
+ * Only absolute http(s) attachment URLs are rendered as links (never javascript:/data:,
+ * and never a relative path, which would wrongly resolve against the portal's origin).
+ */
+const safeAttachmentUrl = (value: string | null): string | null => {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+
+const attachmentName = (value: string): string => {
+  const lastSegment = value.split("?")[0].split("/").pop() || "";
+  try {
+    return decodeURIComponent(lastSegment) || "Attachment";
+  } catch {
+    return lastSegment || "Attachment";
+  }
+};
+
 const mergeMessages = (current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] => {
   const byId = new Map<string, ChatMessage>();
   for (const message of current) byId.set(message.id, message);
@@ -212,6 +259,8 @@ export default function PatientChatWidget() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Guards against double-clicks starting parallel flows, and against stale
   // responses landing after the conversation changed or the widget reset.
@@ -273,6 +322,7 @@ export default function PatientChatWidget() {
     setEarliestPage(1);
     setDraft("");
     setSendError("");
+    setPendingFile(null);
   }, []);
 
   // A different (or no) patient signed in: drop all chat state and the token.
@@ -554,17 +604,36 @@ export default function PatientChatWidget() {
     setView("select_location");
   };
 
+  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    // Reset so picking the same file again still fires onChange.
+    event.target.value = "";
+    if (!file) return;
+    const problem = validateAttachment(file);
+    if (problem) {
+      setPendingFile(null);
+      setSendError(problem);
+      return;
+    }
+    setSendError("");
+    setPendingFile(file);
+  };
+
   const handleSend = async () => {
     const uuid = conversationUuidRef.current;
     const text = draft.trim();
-    if (!uuid || !text || sending) return;
+    const file = CHAT_ATTACHMENTS_ENABLED ? pendingFile : null;
+    if (!uuid || (!text && !file) || sending) return;
     setSending(true);
     setSendError("");
     try {
-      const sent = await ChatApi.sendMessage(uuid, text);
+      const sent = file
+        ? await ChatApi.uploadAttachment(uuid, file, text || undefined)
+        : await ChatApi.sendMessage(uuid, text);
       if (conversationUuidRef.current !== uuid) return;
       setMessages((current) => mergeMessages(current, [sent]));
       setDraft("");
+      setPendingFile(null);
       void refreshMessages().catch(() => {});
     } catch (error) {
       if (isSessionExpired(error)) {
@@ -913,6 +982,28 @@ export default function PatientChatWidget() {
                         mine ? "bg-primary/10 text-foreground" : "bg-muted text-foreground"
                       )}
                     >
+                      {message.attachment && (() => {
+                        const href = safeAttachmentUrl(message.attachment);
+                        const name = attachmentName(message.attachment);
+                        const content = (
+                          <>
+                            <FileText className="h-4 w-4 shrink-0 text-primary" />
+                            <span className="truncate">{name}</span>
+                          </>
+                        );
+                        return href ? (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn("flex items-center gap-2 underline-offset-2 hover:underline", message.message && "mb-1")}
+                          >
+                            {content}
+                          </a>
+                        ) : (
+                          <span className={cn("flex items-center gap-2", message.message && "mb-1")}>{content}</span>
+                        );
+                      })()}
                       {message.message}
                     </div>
                   </div>
@@ -922,6 +1013,22 @@ export default function PatientChatWidget() {
             </div>
             <div className="border-t border-border p-3">
               {sendError && <p className="mb-2 text-xs text-destructive">{sendError}</p>}
+              {pendingFile && (
+                <div className="mb-2 flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs">
+                  <FileText className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
+                  <span className="shrink-0 text-muted-foreground">{formatFileSize(pendingFile.size)}</span>
+                  <button
+                    type="button"
+                    aria-label="Remove attachment"
+                    disabled={sending}
+                    onClick={() => setPendingFile(null)}
+                    className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               <form
                 className="flex items-end gap-2"
                 onSubmit={(event) => {
@@ -929,6 +1036,42 @@ export default function PatientChatWidget() {
                   void handleSend();
                 }}
               >
+                {CHAT_ATTACHMENTS_ENABLED ? (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={CHAT_ATTACHMENT_ACCEPT}
+                      className="hidden"
+                      onChange={handleFileSelected}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Attach a document"
+                      disabled={sending}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  // Upload API not live yet: visible but disabled. The span keeps the
+                  // tooltip working (disabled buttons don't fire pointer events).
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <Button type="button" variant="outline" size="icon" disabled aria-label="Attachments coming soon">
+                          <Paperclip className="h-4 w-4" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="z-[60]">
+                      Attachments coming soon
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
@@ -944,7 +1087,12 @@ export default function PatientChatWidget() {
                   aria-label="Message"
                   className="max-h-28 min-h-9 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 />
-                <Button type="submit" size="icon" disabled={!draft.trim() || sending} aria-label="Send message">
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={(!draft.trim() && !pendingFile) || sending}
+                  aria-label="Send message"
+                >
                   {sending ? <Spinner /> : <SendHorizontal className="h-4 w-4" />}
                 </Button>
               </form>

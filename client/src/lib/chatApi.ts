@@ -29,6 +29,19 @@ export const CHAT_POLL_INTERVAL_MS = 5000;
 /** Transcript page size (backend default is 50). */
 export const CHAT_PAGE_SIZE = 50;
 
+/**
+ * Attachments. backend-pp has NO patient upload endpoint yet (the API reference
+ * says not to surface a file control until it exists), so the paperclip is
+ * shown disabled. When the endpoint ships: implement `uploadAttachment` below
+ * against the real contract, then flip this flag to true.
+ */
+export const CHAT_ATTACHMENTS_ENABLED = false;
+/** Max upload size (confirmed by the developer: 100 MB). */
+export const CHAT_ATTACHMENT_MAX_BYTES = 100 * 1024 * 1024;
+/** Allowed file types — adjust to the backend's validation rule once known. */
+export const CHAT_ATTACHMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "heic", "doc", "docx"];
+export const CHAT_ATTACHMENT_ACCEPT = CHAT_ATTACHMENT_EXTENSIONS.map((ext) => `.${ext}`).join(",");
+
 export type ChatErrorKind =
   | "session_expired"
   | "forbidden"
@@ -256,6 +269,16 @@ const ChatApi = {
     });
     if (!data?.messages || !Array.isArray(data.messages.data)) throw new ChatApiError("server");
     return data.messages;
+  },
+
+  /**
+   * PLACEHOLDER — the backend upload endpoint does not exist yet. Only reachable
+   * when CHAT_ATTACHMENTS_ENABLED is true. When wiring it: use the real path and
+   * field names, send FormData (no manual Content-Type), and raise `timeout` for
+   * large files (the shared 30s timeout is too short for 100 MB).
+   */
+  uploadAttachment: async (_uuid: string, _file: File, _message?: string): Promise<ChatMessage> => {
+    throw new ChatApiError("not_found");
   },
 
   sendMessage: async (uuid: string, message: string): Promise<ChatMessage> => {

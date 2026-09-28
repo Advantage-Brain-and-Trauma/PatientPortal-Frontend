@@ -71,6 +71,16 @@ and notable configuration/docs changes.
 > confirming calls `close`, then closes and resets the popup. X on any other screen still just closes.
 > Minimize keeps the chat open. The "ended" screen now only covers a chat ended by the care team.
 >
+> **Follow-up (same day) — attachment button (API pending).** Added a paperclip button left of the
+> composer. The backend has NO patient upload endpoint yet, so `CHAT_ATTACHMENTS_ENABLED = false`
+> in `chatApi.ts`: the button is shown DISABLED with an "Attachments coming soon" tooltip and nothing
+> is uploaded or faked. Built behind the flag, ready to switch on: hidden file input, client-side
+> validation (PDF/JPG/JPEG/PNG/HEIC/DOC/DOCX, 100 MB max — limit confirmed by the developer; types to
+> be aligned with the backend rule), a selected-file chip with remove, send enabled for file-only
+> messages, and a placeholder `ChatApi.uploadAttachment()` to implement against the real contract
+> (FormData, larger timeout). Messages carrying `attachment` now render a file row; only absolute
+> http(s) URLs become links (no javascript:/data:/relative URLs).
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >
