@@ -32,6 +32,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import Apis from "@/lib/Apis";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+import ChatAttachmentPreview, { ChatAttachmentPreviewTarget } from "@/components/chat/ChatAttachmentPreview";
 import ChatApi, {
   CHAT_ATTACHMENTS_ENABLED,
   CHAT_ATTACHMENT_ACCEPT,
@@ -265,8 +267,9 @@ export default function PatientChatWidget() {
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // Attachment opened in the in-app viewer (instead of a new browser tab).
+  const [preview, setPreview] = useState<ChatAttachmentPreviewTarget | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // The server reference for `pendingFile` once uploaded, so a failed SEND is
@@ -338,8 +341,8 @@ export default function PatientChatWidget() {
     setMessages([]);
     setEarliestPage(1);
     setDraft("");
-    setSendError("");
     setPendingFile(null);
+    setPreview(null);
     setUploadProgress(null);
     uploadedRef.current = null;
   }, []);
@@ -401,7 +404,6 @@ export default function PatientChatWidget() {
       setConversation(target);
       setCareTeamName(careTeamNameFor(target, department));
       setConfirmingEnd(false);
-      setSendError("");
       await loadLatestMessages(target.uuid);
       if (generation !== generationRef.current) return;
       setView("conversation");
@@ -595,7 +597,7 @@ export default function PatientChatWidget() {
       if (isSessionExpired(error)) {
         setView("session_expired");
       } else {
-        setSendError(describeError(error).message);
+        toast.error(describeError(error).message);
         setConfirmingEnd(false);
       }
     } finally {
@@ -631,10 +633,9 @@ export default function PatientChatWidget() {
     const problem = validateAttachment(file);
     if (problem) {
       selectPendingFile(null);
-      setSendError(problem);
+      toast.error(problem);
       return;
     }
-    setSendError("");
     selectPendingFile(file);
   };
 
@@ -644,7 +645,6 @@ export default function PatientChatWidget() {
     const file = CHAT_ATTACHMENTS_ENABLED ? pendingFile : null;
     if (!uuid || (!text && !file) || sending) return;
     setSending(true);
-    setSendError("");
     try {
       let attachment: { path: string; type: "image" | "file" } | undefined;
       if (file) {
@@ -676,7 +676,7 @@ export default function PatientChatWidget() {
         // The conversation was ended (e.g. by the care team) — it can't be written to again.
         setView("ended");
       } else {
-        setSendError(describeError(error).message);
+        toast.error(describeError(error).message);
       }
     } finally {
       setUploadProgress(null);
@@ -1028,14 +1028,16 @@ export default function PatientChatWidget() {
                           </>
                         );
                         return href ? (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn("flex items-center gap-2 underline-offset-2 hover:underline", message.message && "mb-1")}
+                          <button
+                            type="button"
+                            onClick={() => setPreview({ url: href, name })}
+                            className={cn(
+                              "flex max-w-full items-center gap-2 rounded text-left underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              message.message && "mb-1"
+                            )}
                           >
                             {content}
-                          </a>
+                          </button>
                         ) : (
                           <span className={cn("flex items-center gap-2", message.message && "mb-1")}>{content}</span>
                         );
@@ -1048,7 +1050,6 @@ export default function PatientChatWidget() {
               <div ref={messagesEndRef} />
             </div>
             <div className="border-t border-border p-3">
-              {sendError && <p className="mb-2 text-xs text-destructive">{sendError}</p>}
               {pendingFile && (
                 <div className="mb-2 flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs">
                   <FileText className="h-4 w-4 shrink-0 text-primary" />
@@ -1172,6 +1173,10 @@ export default function PatientChatWidget() {
           We typically reply in a few minutes.
         </div>
       )}
+
+      {/* Attachment viewer. Portaled full-page on purpose: a document needs more room
+          than the 370px chat popup. */}
+      <ChatAttachmentPreview target={preview} onClose={() => setPreview(null)} />
 
       {/* Close (X) during an active conversation: warn that closing ends the chat.
           Rendered INSIDE the popup (not portaled) so it only covers the chat, not the site. */}

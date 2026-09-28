@@ -94,6 +94,14 @@ and notable configuration/docs changes.
 > on the PUBLIC disk (no auth/expiry, per the sheet a deliberate decision); nginx
 > `client_max_body_size` defaults to 1 MB, so large uploads 413 until the servers are configured.
 >
+> **Follow-up (same day) — toasts + in-app attachment viewer.** Chat errors (unsupported/too-large
+> file, send/upload failures, end-chat failure) now show as `sonner` toasts (the portal's existing
+> toast) instead of red text above the composer; the inline `sendError` state was removed. Clicking an
+> attachment now opens `components/chat/ChatAttachmentPreview.tsx` (new, shadcn `Dialog`) instead of a
+> new tab: images inline, PDFs in an iframe, other types (doc/xls/csv, HEIC) as a "Preview isn't
+> available" card; every view has a Download button. The viewer is portaled full-page on purpose (a
+> document needs more room than the 370px popup).
+>
 > **Files/areas:** `client/src/lib/chatApi.ts` (new), `client/src/components/chat/PatientChatWidget.tsx`
 > (new), `client/src/App.tsx` (import + mount next to `MultipleFunnelSelectionModal`).
 >
