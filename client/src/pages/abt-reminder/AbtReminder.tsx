@@ -99,6 +99,72 @@ const CONCERN_OPTIONS: Choice[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// TEST MODE — TODO: remove before production (set to false or delete block).
+// Opening /abt-reminder WITHOUT ?token= shows the prototype's sample
+// appointment and fakes the API in memory so the screens can be tested.
+// Nothing is sent to the backend; links WITH a token always use the real API.
+// ---------------------------------------------------------------------------
+
+const PREVIEW_WITHOUT_TOKEN = true;
+
+const PREVIEW_APPOINTMENT: ReminderAppointment = {
+  patient_first_name: "Jamie",
+  attend_date: "2026-09-22",
+  time: "10:30:00",
+  end_time: "11:00:00",
+  provider_name: "Dr. Maya Patel",
+  service: "PT",
+  visit_type: "FU",
+  visit_type_name: "Follow-up visit",
+  location: null,
+  address: "125 Market Street, Suite 300",
+  facility_phone_no: FALLBACK_PHONE,
+  is_virtual: 0,
+  attend_status: "S",
+  can_respond: true,
+  response: { status: null, reason: null },
+};
+
+let previewAppointment: ReminderAppointment = { ...PREVIEW_APPOINTMENT };
+
+const previewDelay = <T,>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(value), 300));
+
+const PreviewApi: typeof ReminderApi = {
+  getAppointment: () => previewDelay({ ...previewAppointment }),
+  confirm: () => {
+    previewAppointment = { ...previewAppointment, response: { status: "confirmed", reason: null } };
+    return previewDelay({ ...previewAppointment });
+  },
+  getTimeSlots: () =>
+    previewDelay({
+      attend_date: previewAppointment.attend_date,
+      current_time: previewAppointment.time,
+      slots: [
+        { time: "13:00", label: "1:00 PM" },
+        { time: "14:00", label: "2:00 PM" },
+        { time: "15:30", label: "3:30 PM" },
+      ],
+    }),
+  reschedule: (_token, time) => {
+    previewAppointment = { ...previewAppointment, can_respond: false };
+    return previewDelay({ attend_date: previewAppointment.attend_date, time: `${time}:00`, end_time: null });
+  },
+  helpRequest: (_token, body) => {
+    const label =
+      [...TRANSPORTATION_OPTIONS, ...LOCATION_OPTIONS, ...CONCERN_OPTIONS].find(
+        (option) => option.id === body.option,
+      )?.label ?? "Appointment help";
+    previewAppointment = { ...previewAppointment, response: { status: "help_requested", reason: label } };
+    return previewDelay({ ...previewAppointment, request: label });
+  },
+};
+
+/** Real API for a token link; the in-memory test API only when test mode is on and there is no token. */
+function apiFor(token: string): typeof ReminderApi {
+  return !token && PREVIEW_WITHOUT_TOKEN ? PreviewApi : ReminderApi;
+}
+
+// ---------------------------------------------------------------------------
 // Formatting (dates/times are clinic-local strings; never shifted by timezone)
 // ---------------------------------------------------------------------------
 
@@ -563,7 +629,7 @@ function ReminderScreen() {
               loading={submitting}
               onClick={() =>
                 run(async () => {
-                  setAppointment(await ReminderApi.confirm(token));
+                  setAppointment(await apiFor(token).confirm(token));
                   navigate("/confirmed");
                 })
               }
@@ -635,7 +701,7 @@ function DifferentTimeScreen() {
   const { submitting, error, run } = useSubmit();
   const slotsQuery = useQuery({
     queryKey: ["abt-reminder", "time-slots", token],
-    queryFn: () => ReminderApi.getTimeSlots(token),
+    queryFn: () => apiFor(token).getTimeSlots(token),
     staleTime: 0,
     refetchOnMount: "always",
   });
@@ -704,7 +770,7 @@ function DifferentTimeScreen() {
               run(async () => {
                 if (!selectedTime) return;
                 try {
-                  const result = await ReminderApi.reschedule(token, selectedTime);
+                  const result = await apiFor(token).reschedule(token, selectedTime);
                   writeSession(RESCHEDULED_KEY, JSON.stringify({ ...result, ref: tokenTag(token) }));
                   navigate("/rescheduled");
                 } catch (caught) {
@@ -736,7 +802,7 @@ function useHelpRequest(category: HelpCategory, options: Choice[], noteRequired:
     run(async () => {
       if (!selectedId) return;
       const trimmed = note.trim();
-      const result = await ReminderApi.helpRequest(token, {
+      const result = await apiFor(token).helpRequest(token, {
         category,
         option: selectedId,
         ...(trimmed ? { note: trimmed } : {}),
@@ -1159,8 +1225,8 @@ export default function AbtReminder() {
   // Reloaded on every screen (API sheet: "Also reload on every screen").
   const appointmentQuery = useQuery({
     queryKey: appointmentQueryKey(token),
-    queryFn: () => ReminderApi.getAppointment(token),
-    enabled: !!token,
+    queryFn: () => apiFor(token).getAppointment(token),
+    enabled: !!token || PREVIEW_WITHOUT_TOKEN,
     staleTime: 0,
     refetchOnMount: "always",
   });
@@ -1219,7 +1285,7 @@ export default function AbtReminder() {
   const loadError = appointmentQuery.error instanceof ReminderApiError ? appointmentQuery.error : null;
 
   let screen: ReactNode;
-  if (!token) {
+  if (!token && !PREVIEW_WITHOUT_TOKEN) {
     screen = <ErrorScreen error={null} onRetry={() => undefined} />;
   } else if (loadError && (loadError.kind === "invalid_link" || loadError.kind === "expired" || !appointment)) {
     screen = <ErrorScreen error={loadError} onRetry={() => appointmentQuery.refetch()} />;

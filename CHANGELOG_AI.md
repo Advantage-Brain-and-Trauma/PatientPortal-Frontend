@@ -20,6 +20,21 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Temporary: ABT reminder test mode without a token (remove before production)
+> **What:** At the developer's request, opening `/abt-reminder` with no `?token=` (local and
+> staging) now shows the prototype's sample appointment (Jamie / Dr. Maya Patel / Sep 22,
+> 10:30 AM, 125 Market Street) instead of "This link is not valid.", backed by an in-memory
+> fake of the 5 reminder APIs (confirm, 3 sample time slots, reschedule, help requests) so
+> every screen can be clicked through. Links WITH a token are unchanged and use the real API.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/AbtReminder.tsx` — `PREVIEW_WITHOUT_TOKEN`
+> flag, `PreviewApi`, `apiFor(token)` (marked `TODO: remove before production`).
+>
+> **Auth / case-scoping / patient-data:** Test mode makes no backend calls (verified) and
+> shows only sample data. **Must be switched off (`PREVIEW_WITHOUT_TOKEN = false`) or removed
+> before this reaches `main`**, otherwise patients opening the page without a token would see
+> the sample appointment instead of the invalid-link screen.
+
 ### Feature: ABT appointment reminder wired to the appointment-reminder API
 > **What:** Replaced the prototype's hardcoded sample data with the 5 endpoints from the
 > "ABT Reminder APIs" sheet: `GET appointment-reminder/{token}` (reloaded on every screen),
