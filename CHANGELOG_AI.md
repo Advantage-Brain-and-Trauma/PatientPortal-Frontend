@@ -20,6 +20,19 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Enhancement: ABT reminder logo header — bigger logo, centred rule, mobile top layout
+> **What:** Larger logo (desktop up to 76px tall, mobile 52–64px; compact help-screen header
+> in proportion). Desktop: the gold rule is now vertically centred beside the logo (was pinned
+> to its bottom). Mobile (< 720px): content starts at the top instead of being vertically
+> centred; logo centred horizontally with the gold rule centred beneath it (fades both ends),
+> then the content. Extra steps at `max-height: 680px` / `620px` keep the no-scroll fit.
+> Verified no overflow on all screens at 375×600, 390×664, 412×780, 1366×657, 1440×760 and
+> 1920×950; mobile logo centre = viewport centre, desktop rule centre = logo centre.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/abt-reminder.css` (new "Logo header" section).
+>
+> **Auth / case-scoping / patient-data:** None — presentation only.
+
 ### Fix: ABT reminder logo had empty space below it
 > **What:** The prototype's logo file (663×183) carried transparent padding — the artwork only
 > fills the top-left 381×119 — so the logo box showed a blank band underneath (and to the right).

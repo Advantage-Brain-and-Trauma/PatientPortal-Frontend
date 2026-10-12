@@ -1312,3 +1312,81 @@
     margin-top: 0.45rem;
   }
 }
+
+/* ==========================================================================
+ * Logo header
+ * Desktop: larger logo with the gold rule vertically centred beside it.
+ * Mobile (< 720px): content starts at the top; logo centred, gold rule
+ * centred beneath it, then the content.
+ * ========================================================================== */
+.abt-reminder .brand-header {
+  align-items: center;
+}
+.abt-reminder .brand-header:after,
+.abt-reminder .brand-header--compact:after {
+  margin-bottom: 0;
+}
+.abt-reminder .brand-header img {
+  height: clamp(32px, 6.4dvh, 76px);
+}
+.abt-reminder .brand-header--compact img {
+  height: clamp(28px, 5.2dvh, 64px);
+}
+@media (max-height: 680px) {
+  .abt-reminder .brand-header img {
+    height: 36px;
+  }
+  .abt-reminder .brand-header--compact img {
+    height: 30px;
+  }
+}
+
+@media (max-width: 719px) {
+  .abt-reminder .page-sheet {
+    justify-content: flex-start;
+  }
+  .abt-reminder .brand-header,
+  .abt-reminder .brand-header--compact {
+    flex-direction: column;
+    gap: clamp(0.5rem, 1.4dvh, 0.8rem);
+  }
+  .abt-reminder .brand-header:after,
+  .abt-reminder .brand-header--compact:after {
+    background: linear-gradient(90deg, #be8d2e00, #be8d2ec2 50%, #be8d2e00);
+    flex: none;
+    width: min(80%, 320px);
+  }
+  .abt-reminder .brand-header img {
+    max-width: 88%;
+    height: clamp(52px, 8dvh, 64px);
+  }
+  .abt-reminder .brand-header--compact img {
+    height: clamp(44px, 6.2dvh, 54px);
+  }
+}
+@media (max-width: 719px) and (max-height: 680px) {
+  .abt-reminder .brand-header img {
+    height: 48px;
+  }
+  .abt-reminder .brand-header--compact img {
+    height: 40px;
+  }
+}
+@media (max-width: 719px) and (max-height: 620px) {
+  .abt-reminder .brand-header--compact {
+    gap: 0.35rem;
+  }
+  .abt-reminder .brand-header--compact img {
+    height: 30px;
+  }
+  .abt-reminder .back-link {
+    min-height: 22px;
+  }
+  .abt-reminder .page-sheet {
+    padding-block: 0.35rem;
+  }
+  .abt-reminder .support-intro__art {
+    width: 40px;
+    height: 40px;
+  }
+}
