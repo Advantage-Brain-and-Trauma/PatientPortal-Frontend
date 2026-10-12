@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { jwtDecode } from "jwt-decode";
 import { MAGIC_LINK_PENDING_REDIRECT_KEY } from "@/lib/magicLink";
 import { MULTIPLE_FUNNEL_PENDING_KEY } from "@/lib/multipleFunnels";
+import { isAbtReminderPath } from "@/lib/publicRoutes";
 
 interface TokenValidatorProps {
   children: React.ReactNode;
@@ -43,7 +44,13 @@ export function TokenValidator({ children }: TokenValidatorProps) {
     // Skip validation if:
     // 1. Current location is /login or /reset-password (public pages - no token validation)
     // 2. This is the first render (previousLocation is null)
-    if (location === "/login" || location === "/reset-password" || previousLocation === null) {
+    // 3. Current location is the public ABT appointment reminder (/abt-reminder/*)
+    if (
+      location === "/login" ||
+      location === "/reset-password" ||
+      isAbtReminderPath(location) ||
+      previousLocation === null
+    ) {
       setPreviousLocation(location);
       return;
     }

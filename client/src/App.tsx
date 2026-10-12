@@ -25,6 +25,7 @@ import Layout from "@/components/Layout";
 import StaffDashboard from "@/pages/StaffDashboard";
 import NotFound from "@/pages/not-found";
 import ResetPassword from "@/pages/ResetPassword";
+import AbtReminder from "@/pages/abt-reminder/AbtReminder";
 import { TokenValidator } from "@/components/TokenValidator";
 import { EmailLinkHandler } from "@/components/EmailLinkHandler";
 import MultipleFunnelSelectionModal from "@/components/MultipleFunnelSelectionModal";
@@ -91,6 +92,9 @@ function Router() {
       {/* Public Routes */}
       <Route path="/login" component={Login} />
       <Route path="/reset-password" component={ResetPassword} />
+      {/* Public ABT appointment reminder (no login) - landing + every sub-page */}
+      <Route path="/abt-reminder" component={AbtReminder} />
+      <Route path="/abt-reminder/*" component={AbtReminder} />
 
       {/* Patient Routes - More specific routes first */}
       <Route path="/appointments">

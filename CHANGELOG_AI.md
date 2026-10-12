@@ -18,6 +18,48 @@ and notable configuration/docs changes.
 
 ---
 
+## 2026-10-12
+
+### Feature: public ABT appointment reminder page (`/abt-reminder/*`)
+> **What:** Ported the approved Manus prototype (abt-reminder-aoacmhju.manus.space) into the
+> portal as an exact replica, served publicly (no login) at `/abt-reminder` and its sub-pages:
+> `/confirmed`, `/rescheduled`, `/help`, `/help/time`, `/help/transportation`,
+> `/help/location`, `/help/other`, `/help/requested`. Same copy, layout, icons, images,
+> interactions (selection states, disabled buttons, required note on "other concern"),
+> "Add to calendar" `.ics` download, Google Maps directions link, slide-in animation,
+> scroll-to-top + heading focus on each screen, and mobile/desktop breakpoints. Verified
+> in the browser at 1280px: element positions, sizes, fonts and colours match the original
+> on all 9 screens; mobile (375px) has no horizontal scroll.
+>
+> **Files/areas:**
+> - `client/src/pages/abt-reminder/AbtReminder.tsx` (new) — all screens + sub-path routing.
+> - `client/src/pages/abt-reminder/abt-reminder.css` (new) — the prototype's own CSS, every
+>   selector scoped under `.abt-reminder` (keyframes renamed) so nothing leaks into the portal.
+>   Intentionally uses the prototype palette + "Source Sans 3" (loaded only while the page is
+>   mounted) instead of portal tokens, per the developer's "exactly same" request.
+> - `client/public/abt-reminder/` (new) — logo, ivory phoenix texture, 3 help illustrations
+>   (4 are WebP; saved with `.webp` extensions).
+> - `client/src/lib/publicRoutes.ts` (new) — `ABT_REMINDER_BASE` + `isAbtReminderPath()`.
+> - `client/src/App.tsx` — public `/abt-reminder` and `/abt-reminder/*` routes (outside
+>   `ProtectedRoute`/`Layout`).
+> - `client/src/components/TokenValidator.tsx` — skip route-change token validation for
+>   `/abt-reminder/*` (otherwise a visitor without a token was cleared + sent to /login on the
+>   first click).
+> - `client/src/contexts/AuthContext.tsx` — don't redirect to /login from `/abt-reminder/*`
+>   when a stored token is expired (storage cleanup unchanged).
+> - `client/src/components/chat/PatientChatWidget.tsx` — hidden on `/abt-reminder/*`.
+>
+> **Auth / case-scoping / patient-data:** No API calls, no backend data, no token read or
+> written by the page. All other routes, guards and 401 handling are unchanged (verified
+> `/appointments` still redirects to `/login` without a token). Appointment details are the
+> prototype's hardcoded sample data (Jamie / Dr. Maya Patel / Sep 22) and Confirm / help
+> requests only move between screens (state kept in `sessionStorage` `abt-*` keys) — nothing
+> is sent to staff. Prototype's third-party analytics (Manus/Umami, Plausible) and Manus editor
+> script were not ported. Follow-up before real patient use: backend endpoints + a signed
+> per-patient link.
+
+---
+
 ## 2026-09-28
 
 ### Feature: floating Patient Support chat widget (Location -> Case ID -> Chat)

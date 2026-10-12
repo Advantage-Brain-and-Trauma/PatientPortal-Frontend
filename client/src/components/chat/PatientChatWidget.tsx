@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { broadcastChatEvent, ChatSyncEvent, subscribeChatEvents } from "@/lib/chatSync";
+import { ABT_REMINDER_BASE } from "@/lib/publicRoutes";
 import ChatAttachmentPreview, { ChatAttachmentPreviewTarget } from "@/components/chat/ChatAttachmentPreview";
 import ChatApi, {
   CHAT_ATTACHMENTS_ENABLED,
@@ -81,7 +82,7 @@ interface ChatErrorState {
 }
 
 // Routes where the patient is not inside the portal shell.
-const HIDDEN_ROUTES = ["/login", "/reset-password"];
+const HIDDEN_ROUTES = ["/login", "/reset-password", ABT_REMINDER_BASE];
 
 const describeError = (error: unknown): { title: string; message: string } => {
   const kind = error instanceof ChatApiError ? error.kind : "server";

@@ -1,0 +1,708 @@
+/*
+ * ABT appointment reminder — public page at /abt-reminder.
+ *
+ * Exact port of the approved Manus prototype (abt-reminder-aoacmhju.manus.space).
+ * Intentionally uses the prototype's own palette and "Source Sans 3" font
+ * instead of the portal design tokens (developer requested a pixel match).
+ * Every selector is scoped under `.abt-reminder` so nothing leaks into the
+ * rest of the portal.
+ */
+.abt-reminder {
+  background-color: oklch(98.5% 0.012 89);
+  color: oklch(25% 0.035 252);
+  font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-width: 320px;
+}
+.abt-reminder h1,
+.abt-reminder h2 {
+  font-family: inherit;
+}
+.abt-reminder button:not(:disabled),
+.abt-reminder a[href],
+.abt-reminder textarea:not(:disabled) {
+  cursor: pointer;
+}
+.abt-reminder .prototype-root {
+  color: #102a43;
+  background-color: #f7f2e9;
+  background-image: linear-gradient(#fcfaf5a6, #fcfaf5d6),
+    url(/abt-reminder/abt-ivory-phoenix-texture.webp);
+  background-position: top;
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100svh;
+}
+.abt-reminder .prototype-stage {
+  width: 100%;
+}
+.abt-reminder .page-sheet {
+  background: #fcfaf5f7;
+  width: min(100%, 700px);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 1.35rem 1.15rem 2.25rem;
+}
+.abt-reminder .brand-header {
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 0.9rem;
+  width: 100%;
+  margin: 0.35rem auto 1.45rem;
+  display: flex;
+}
+.abt-reminder .brand-header:after {
+  content: "";
+  background: linear-gradient(90deg, #be8d2ec2, #be8d2e00);
+  flex: 1;
+  height: 1px;
+  margin-bottom: 0.95rem;
+}
+.abt-reminder .brand-header img {
+  object-fit: contain;
+  width: min(88%, 344px);
+  height: auto;
+}
+.abt-reminder .brand-header--compact {
+  margin: 0.45rem auto 1.35rem;
+}
+.abt-reminder .brand-header--compact img {
+  width: min(76%, 300px);
+}
+.abt-reminder .back-link,
+.abt-reminder .text-action {
+  color: #941c33;
+  font: inherit;
+  background: 0 0;
+  border: 0;
+  font-weight: 700;
+}
+.abt-reminder .back-link {
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.25rem 0.2rem;
+  font-size: 1rem;
+  display: inline-flex;
+}
+.abt-reminder .back-link svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.abt-reminder .page-intro {
+  margin-bottom: 1.55rem;
+}
+.abt-reminder .eyebrow,
+.abt-reminder .appointment-context p,
+.abt-reminder .location-card p,
+.abt-reminder .request-card__row p {
+  color: #b38833;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.abt-reminder .page-intro > .eyebrow {
+  text-align: center;
+}
+.abt-reminder h1,
+.abt-reminder h2,
+.abt-reminder p {
+  text-wrap: pretty;
+}
+.abt-reminder h1 {
+  color: #102a43;
+  letter-spacing: -0.045em;
+  margin: 0;
+  font-size: clamp(2.15rem, 9vw, 3.45rem);
+  font-weight: 800;
+  line-height: 0.98;
+}
+.abt-reminder h1:focus {
+  outline: none;
+}
+.abt-reminder .page-intro .lede,
+.abt-reminder .success-intro .lede,
+.abt-reminder .support-intro .lede {
+  color: #253e57;
+  margin: 1.05rem 0 0;
+  font-size: clamp(1.08rem, 4.5vw, 1.32rem);
+  line-height: 1.42;
+}
+.abt-reminder .appointment-card,
+.abt-reminder .appointment-context,
+.abt-reminder .form-panel,
+.abt-reminder .location-card,
+.abt-reminder .request-card {
+  background: #fffffcc2;
+  border: 1px solid #96815d47;
+  box-shadow: 0 18px 42px #543e2313;
+}
+.abt-reminder .appointment-card {
+  background: linear-gradient(#fffdf7f0, #fffffcc7);
+  border-top: 3px solid #be8d2eb3;
+  border-radius: 1.15rem;
+  margin: 1.75rem 0;
+  overflow: hidden;
+}
+.abt-reminder .appointment-card__date {
+  background: linear-gradient(120deg, #f6ebd1e6, #fbf7eba6);
+  border-radius: 0.85rem;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem;
+  padding: 1.15rem 1rem;
+  display: flex;
+}
+.abt-reminder .appointment-card__date svg,
+.abt-reminder .detail-row svg,
+.abt-reminder .appointment-context > svg,
+.abt-reminder .location-card > svg,
+.abt-reminder .request-card__row > svg {
+  color: #bd8d2e;
+  stroke-width: 1.8px;
+  flex: none;
+  width: 2.45rem;
+  height: 2.45rem;
+}
+.abt-reminder .appointment-card__date p {
+  color: #162b42;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.abt-reminder .appointment-card__date strong {
+  color: #102a43;
+  margin-top: 0.1rem;
+  font-size: 2rem;
+  line-height: 1;
+  display: block;
+}
+.abt-reminder .detail-row {
+  color: #1f3348;
+  border-bottom: 1px solid #99896c33;
+  align-items: center;
+  gap: 1rem;
+  min-height: 68px;
+  margin: 0 1rem;
+  padding: 0.85rem 0.25rem;
+  font-size: 1rem;
+  display: flex;
+}
+.abt-reminder .detail-row svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+.abt-reminder .detail-row--last {
+  border-bottom: 0;
+}
+.abt-reminder .action-stack,
+.abt-reminder .choice-stack,
+.abt-reminder .radio-stack {
+  gap: 0.8rem;
+  display: grid;
+}
+.abt-reminder .action-button {
+  text-align: center;
+  border: 1.5px solid #0000;
+  border-radius: 0.9rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 58px;
+  padding: 0.9rem 1.15rem;
+  font-family: inherit;
+  font-size: 1.06rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-decoration: none;
+  transition:
+    transform 0.14s cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+}
+.abt-reminder .action-button svg {
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+}
+.abt-reminder .action-button--primary {
+  color: #fffaf1;
+  background: linear-gradient(135deg, #8b172e, #a3233b);
+  box-shadow: 0 12px 26px #7b142a33;
+}
+.abt-reminder .action-button--secondary {
+  color: #941c33;
+  background: #fffdf8d1;
+  border-color: #941c33;
+}
+.abt-reminder .action-button:hover:not(:disabled) {
+  box-shadow: 0 15px 32px #7b142a3d;
+}
+.abt-reminder .action-button:active:not(:disabled),
+.abt-reminder .choice-link:active,
+.abt-reminder .radio-choice:active,
+.abt-reminder .back-link:active {
+  transform: scale(0.97);
+}
+.abt-reminder .action-button:disabled {
+  color: #9c9290;
+  box-shadow: none;
+  cursor: not-allowed;
+  background: #e7e0da;
+}
+.abt-reminder .help-line,
+.abt-reminder .status-footnote {
+  color: #667487;
+  text-align: center;
+  margin: 1.4rem 0 0;
+  font-size: 0.96rem;
+  line-height: 1.4;
+}
+.abt-reminder .help-line a {
+  color: #941c33;
+  text-underline-offset: 0.2em;
+  font-weight: 700;
+}
+.abt-reminder .appointment-context {
+  background: linear-gradient(120deg, #f7eacaf0, #fffbf0e0);
+  border-left: 4px solid #941c33;
+  border-radius: 0.9rem 1rem 1rem 0.9rem;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.4rem 0;
+  padding: 1rem 1.05rem;
+  display: flex;
+}
+.abt-reminder .appointment-context > svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+.abt-reminder .appointment-context p {
+  margin-bottom: 0.25rem;
+  font-size: 0.7rem;
+}
+.abt-reminder .appointment-context > div > strong,
+.abt-reminder .appointment-context > div > span {
+  display: block;
+}
+.abt-reminder .appointment-context > div > strong {
+  font-size: 1.05rem;
+}
+.abt-reminder .appointment-context > div > span {
+  color: #42576d;
+  margin-top: 0.15rem;
+}
+.abt-reminder .choice-link {
+  color: #102a43;
+  text-align: left;
+  background: #fffffc9e;
+  border: 1px solid #96815d38;
+  border-left: 3px solid #be8d2ec2;
+  border-radius: 1rem;
+  grid-template-columns: 48px 1fr 22px;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  min-height: 76px;
+  padding: 0.85rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  transition:
+    transform 0.14s cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+  display: grid;
+  box-shadow: 0 8px 22px #543e230b;
+}
+.abt-reminder .choice-link:hover {
+  border-color: #941c338c;
+  box-shadow: 0 14px 34px #543e2317;
+}
+.abt-reminder .choice-link__icon {
+  color: #ae7e24;
+  background: #f7edd4;
+  border-radius: 50%;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  display: grid;
+}
+.abt-reminder .choice-link__icon svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+.abt-reminder .choice-link__chevron {
+  color: #941c33;
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.abt-reminder .section-heading {
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin: 1.55rem 0 0.85rem;
+  display: flex;
+}
+.abt-reminder .section-heading h2,
+.abt-reminder .form-panel h2 {
+  color: #102a43;
+  letter-spacing: -0.025em;
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.abt-reminder .section-heading span {
+  color: #7b6d5b;
+  font-size: 0.86rem;
+}
+.abt-reminder .radio-choice {
+  color: #102a43;
+  text-align: left;
+  background: #fffffc94;
+  border: 1.5px solid #8a7d6b33;
+  border-radius: 1rem;
+  grid-template-columns: 26px 42px 1fr;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  min-height: 84px;
+  padding: 0.9rem 1rem;
+  font-family: inherit;
+  transition:
+    transform 0.14s cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+  display: grid;
+}
+.abt-reminder .radio-choice:hover,
+.abt-reminder .radio-choice--selected {
+  border-color: #941c33;
+  box-shadow: 0 12px 28px #68283116;
+}
+.abt-reminder .radio-choice--selected {
+  background: #fffaf7f0;
+}
+.abt-reminder .radio-choice__control {
+  border: 2px solid #928c85;
+  border-radius: 50%;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  display: grid;
+}
+.abt-reminder .radio-choice--selected .radio-choice__control {
+  border-color: #941c33;
+}
+.abt-reminder .radio-choice__control span {
+  background: #941c33;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+}
+.abt-reminder .radio-choice__icon {
+  stroke-width: 1.85px;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.abt-reminder .radio-choice__icon-wrap {
+  color: #aa7920;
+  background: #f7edd3bf;
+  border: 1px solid #be8d2e42;
+  border-radius: 50%;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  display: grid;
+}
+.abt-reminder .radio-choice--selected .radio-choice__icon-wrap {
+  color: #941c33;
+  background: #fae8e6b8;
+  border-color: #941c3359;
+}
+.abt-reminder .radio-choice__copy > span,
+.abt-reminder .radio-choice__copy > strong {
+  display: block;
+}
+.abt-reminder .radio-choice__copy > span {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.abt-reminder .radio-choice__copy > strong {
+  color: #102a43;
+  margin-top: 0.22rem;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+.abt-reminder .radio-choice--selected .radio-choice__copy > strong {
+  color: #941c33;
+}
+.abt-reminder .radio-stack + .action-button,
+.abt-reminder .form-panel .action-button,
+.abt-reminder .time-actions {
+  margin-top: 1rem;
+}
+.abt-reminder .support-intro {
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+  display: grid;
+}
+.abt-reminder .support-intro img {
+  object-fit: contain;
+  width: 80px;
+  height: 80px;
+}
+.abt-reminder .support-intro__art,
+.abt-reminder .success-art-frame {
+  background: radial-gradient(circle, #fcf7e7f2, #f4e6c694);
+  border: 1px solid #be8d2e4d;
+  border-radius: 50%;
+  place-items: center;
+  display: grid;
+  box-shadow: 0 12px 28px #77532314;
+}
+.abt-reminder .support-intro__art {
+  width: 96px;
+  height: 96px;
+}
+.abt-reminder .form-panel {
+  border-top: 3px solid #be8d2e94;
+  border-radius: 1.1rem;
+  margin-top: 1.25rem;
+  padding: 1.1rem;
+  box-shadow: 0 12px 34px #543e230d;
+}
+.abt-reminder .form-panel h2 {
+  margin-bottom: 1rem;
+}
+.abt-reminder .radio-stack--compact {
+  gap: 0.65rem;
+}
+.abt-reminder .radio-stack--compact .radio-choice {
+  min-height: 70px;
+}
+.abt-reminder .field-label {
+  color: #102a43;
+  margin: 1rem 0 0.45rem;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.3;
+  display: block;
+}
+.abt-reminder .field-label span {
+  color: #5e6b79;
+  font-weight: 400;
+}
+.abt-reminder textarea {
+  resize: vertical;
+  color: #102a43;
+  width: 100%;
+  min-height: 94px;
+  font: inherit;
+  background: #fffffcd6;
+  border: 1px solid #7b6f5f5c;
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  font-size: 1rem;
+}
+.abt-reminder textarea::placeholder {
+  color: #8a929a;
+}
+.abt-reminder textarea:focus,
+.abt-reminder button:focus-visible,
+.abt-reminder a:focus-visible {
+  outline-offset: 3px;
+  outline: 3px solid #c4953d85;
+}
+.abt-reminder .privacy-note {
+  color: #657383;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  display: flex;
+}
+.abt-reminder .privacy-note svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.08rem;
+}
+.abt-reminder .location-card {
+  border-radius: 1.1rem;
+  grid-template-columns: 48px 1fr;
+  gap: 0.85rem 1rem;
+  margin: 1.4rem 0;
+  padding: 1rem;
+  display: grid;
+}
+.abt-reminder .location-card > svg {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+.abt-reminder .location-card > div > strong,
+.abt-reminder .location-card > div > span {
+  display: block;
+}
+.abt-reminder .location-card > div > strong {
+  font-size: 1.08rem;
+}
+.abt-reminder .location-card > div > span {
+  color: #42576d;
+  margin-top: 0.15rem;
+}
+.abt-reminder .location-card .action-button {
+  grid-column: 1/-1;
+}
+.abt-reminder .success-intro {
+  text-align: center;
+  margin: 0 auto 1.6rem;
+}
+.abt-reminder .success-mark {
+  color: #941c33;
+  background: #f4ead1;
+  border-radius: 50%;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  margin: 0 auto 1.15rem;
+  display: grid;
+  box-shadow: 0 10px 28px #9a752d1f;
+}
+.abt-reminder .success-mark svg {
+  stroke-width: 3px;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.abt-reminder .success-intro .eyebrow {
+  margin-bottom: 0.9rem;
+}
+.abt-reminder .success-intro h1 {
+  font-size: clamp(2.2rem, 9vw, 3.2rem);
+}
+.abt-reminder .success-art {
+  object-fit: contain;
+  width: 92px;
+  height: 92px;
+}
+.abt-reminder .success-art-frame {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 1rem;
+}
+.abt-reminder .text-action {
+  text-underline-offset: 0.25em;
+  min-height: 44px;
+  margin-top: 0.15rem;
+  text-decoration: underline;
+}
+.abt-reminder .request-card {
+  border-radius: 1.1rem;
+  margin: 1.4rem 0;
+  overflow: hidden;
+}
+.abt-reminder .request-card__row {
+  grid-template-columns: 48px 1fr;
+  gap: 1rem;
+  padding: 1.1rem;
+  display: grid;
+}
+.abt-reminder .request-card__row + .request-card__row {
+  border-top: 1px solid #99896c38;
+}
+.abt-reminder .request-card__row > svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+.abt-reminder .request-card__row > div > strong,
+.abt-reminder .request-card__row > div > span {
+  display: block;
+}
+.abt-reminder .request-card__row > div > strong {
+  font-size: 1.08rem;
+}
+.abt-reminder .request-card__row > div > span {
+  color: #40556b;
+  margin-top: 0.16rem;
+}
+.abt-reminder .request-card__row--request {
+  background: #f8efd885;
+}
+@media (min-width: 720px) {
+  .abt-reminder .prototype-stage {
+    padding: 2rem 1rem 3.5rem;
+  }
+  .abt-reminder .page-sheet {
+    border: 1px solid #81654229;
+    border-radius: 1.5rem;
+    min-height: auto;
+    padding: 2rem 2.5rem 2.75rem;
+    box-shadow: 0 28px 80px #422c1a21;
+  }
+  .abt-reminder .page-intro > .eyebrow {
+    text-align: left;
+  }
+}
+@media (max-width: 430px) {
+  .abt-reminder .page-sheet {
+    padding-inline: 1rem;
+  }
+  .abt-reminder .brand-header {
+    margin-bottom: 1.55rem;
+  }
+  .abt-reminder .support-intro {
+    grid-template-columns: 1fr 72px;
+  }
+  .abt-reminder .support-intro img {
+    width: 64px;
+    height: 64px;
+  }
+  .abt-reminder .support-intro__art {
+    width: 76px;
+    height: 76px;
+  }
+  .abt-reminder .radio-choice {
+    grid-template-columns: 24px 38px 1fr;
+    gap: 0.65rem;
+    padding-inline: 0.8rem;
+  }
+  .abt-reminder .radio-choice__icon-wrap {
+    width: 36px;
+    height: 36px;
+  }
+  .abt-reminder .radio-choice__copy > span {
+    font-size: 0.94rem;
+  }
+  .abt-reminder .choice-link {
+    grid-template-columns: 44px 1fr 18px;
+    padding-inline: 0.8rem;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .abt-reminder .enter-screen {
+    animation: 0.24s cubic-bezier(0.23, 1, 0.32, 1) both abt-reminder-page-enter;
+  }
+}
+@keyframes abt-reminder-page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

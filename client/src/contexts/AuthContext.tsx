@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/apiError";
 import { consumePendingMagicLinkRedirect, MAGIC_LINK_PENDING_REDIRECT_KEY, getFormPath, URL_CASE_ID_KEY } from "@/lib/magicLink";
 import { patientIdMatchesToken } from "@/lib/caseContext";
 import { isEncodedEmailLink } from "@/lib/decodeEmailLink";
+import { isAbtReminderPath } from "@/lib/publicRoutes";
 import {
   readMultipleFunnelPendingRedirect,
   clearMultipleFunnelPendingRedirect,
@@ -144,7 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // When the URL is an encoded magic link, let EmailLinkHandler decide the
           // destination (e.g. /reset-password for a new user). Redirecting to
           // /login here would clobber that routing for a stale/expired session.
-          if (!isEncodedEmailLink(window.location.search)) {
+          // The public ABT appointment reminder must stay reachable without a session.
+          if (!isEncodedEmailLink(window.location.search) && !isAbtReminderPath(window.location.pathname)) {
             // Preserve any existing redirect param
             const existingRedirect = new URLSearchParams(window.location.search).get("redirect");
             setLocation(existingRedirect ? `/login?redirect=${encodeURIComponent(existingRedirect)}` : "/login");
