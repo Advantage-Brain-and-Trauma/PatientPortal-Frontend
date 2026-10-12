@@ -46,7 +46,6 @@ import ReminderApi, {
   ReminderApiError,
   type HelpCategory,
   type ReminderAppointment,
-  type ReminderReschedule,
 } from "@/lib/reminderApi";
 import "./abt-reminder.css";
 // Imported (not served from /public) so the build gives each image a
@@ -74,7 +73,6 @@ const FALLBACK_PHONE = "877-487-8289";
 const CLINIC_TIMEZONE = "America/Chicago";
 
 /** sessionStorage keys (tab-scoped; never holds the raw token). */
-const RESCHEDULED_KEY = "abt-rescheduled";
 const REQUEST_LABEL_KEY = "abt-request-label";
 
 type Choice = { id: string; label: string; icon: LucideIcon };
@@ -145,9 +143,16 @@ const PreviewApi: typeof ReminderApi = {
         { time: "14:00", label: "2:00 PM" },
         { time: "15:30", label: "3:30 PM" },
       ],
+      message: null,
     }),
   reschedule: (_token, time) => {
-    previewAppointment = { ...previewAppointment, can_respond: false };
+    // Same appointment modified in place; API 1 then reports it as confirmed.
+    previewAppointment = {
+      ...previewAppointment,
+      time: `${time}:00`,
+      end_time: null,
+      response: { status: "confirmed", reason: null },
+    };
     return previewDelay({ attend_date: previewAppointment.attend_date, time: `${time}:00`, end_time: null });
   },
   helpRequest: (_token, body) => {
@@ -200,6 +205,11 @@ function formatTime(time: string) {
   return `${displayHour}:${minuteText.padStart(2, "0")} ${suffix}`;
 }
 
+/** Confirmed by the patient (confirm or online reschedule) and still scheduled. */
+function isConfirmed(appointment: ReminderAppointment) {
+  return appointment.can_respond && appointment.response?.status === "confirmed";
+}
+
 function phoneHref(phone: string) {
   const digits = phone.replace(/\D/g, "");
   return digits.length === 10 ? `tel:+1${digits}` : `tel:+${digits}`;
@@ -207,13 +217,6 @@ function phoneHref(phone: string) {
 
 function directionsHref(address: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-}
-
-/** Non-reversible tag so stored state can be matched to a link without storing the token. */
-function tokenTag(token: string) {
-  let hash = 5381;
-  for (let index = 0; index < token.length; index += 1) hash = (hash * 33) ^ token.charCodeAt(index);
-  return (hash >>> 0).toString(36);
 }
 
 function readSession(key: string) {
@@ -229,17 +232,6 @@ function writeSession(key: string, value: string) {
     window.sessionStorage.setItem(key, value);
   } catch {
     // Storage unavailable (private mode) — the screen falls back to API data.
-  }
-}
-
-function readRescheduled(token: string): ReminderReschedule | null {
-  const raw = readSession(RESCHEDULED_KEY);
-  if (!raw) return null;
-  try {
-    const stored = JSON.parse(raw) as ReminderReschedule & { ref?: string };
-    return stored.ref === tokenTag(token) ? stored : null;
-  } catch {
-    return null;
   }
 }
 
@@ -290,7 +282,7 @@ interface ReminderContextValue {
   token: string;
   appointment: ReminderAppointment;
   phone: string;
-  navigate: (to: string) => void;
+  navigate: (to: string, options?: { replace?: boolean }) => void;
   refreshAppointment: () => void;
   setAppointment: (appointment: ReminderAppointment) => void;
 }
@@ -311,9 +303,9 @@ function useReminderRoute() {
   const search = useSearch();
   const token = new URLSearchParams(search).get("token")?.trim() || "";
   const subPath = location.slice(ABT_REMINDER_BASE.length) || "/";
-  const navigate = (to: string) => {
+  const navigate = (to: string, options?: { replace?: boolean }) => {
     const path = to === "/" ? ABT_REMINDER_BASE : `${ABT_REMINDER_BASE}${to}`;
-    setLocation(token ? `${path}?token=${encodeURIComponent(token)}` : path);
+    setLocation(token ? `${path}?token=${encodeURIComponent(token)}` : path, options);
   };
   return { location, subPath, token, navigate };
 }
@@ -605,9 +597,6 @@ function ReminderScreen() {
   const { token, appointment, phone, navigate, setAppointment } = useReminder();
   const { submitting, error, run } = useSubmit();
 
-  // After an online reschedule the link points at the replaced appointment.
-  if (!appointment.can_respond && readRescheduled(token)) return <ConfirmedScreen rescheduled />;
-
   const status = appointment.response?.status;
   return (
     <ReminderSheet>
@@ -619,7 +608,6 @@ function ReminderScreen() {
       <AppointmentCard />
       {appointment.can_respond ? (
         <>
-          {status === "confirmed" ? <StatusNotice>You confirmed this appointment.</StatusNotice> : null}
           {status === "help_requested" ? (
             <StatusNotice>We received your help request. Our team will contact you.</StatusNotice>
           ) : null}
@@ -677,7 +665,7 @@ function NoLongerScheduledScreen() {
 }
 
 function HelpOptionsScreen() {
-  const { phone, navigate } = useReminder();
+  const { appointment, phone, navigate } = useReminder();
   return (
     <ReminderSheet backTo="/">
       <PageIntro
@@ -686,7 +674,10 @@ function HelpOptionsScreen() {
       />
       <AppointmentContext />
       <div className="choice-stack" aria-label="Attendance help options">
-        <ChoiceLink icon={CalendarClock} label="I need a different time" onClick={() => navigate("/help/time")} />
+        {/* A confirmed appointment (confirmed or rescheduled) can't be moved again online. */}
+        {isConfirmed(appointment) ? null : (
+          <ChoiceLink icon={CalendarClock} label="I need a different time" onClick={() => navigate("/help/time")} />
+        )}
         <ChoiceLink icon={CarFront} label="I need transportation help" onClick={() => navigate("/help/transportation")} />
         <ChoiceLink icon={MapPin} label="I have a question about the location" onClick={() => navigate("/help/location")} />
         <ChoiceLink icon={CircleHelp} label="I have another concern" onClick={() => navigate("/help/other")} />
@@ -697,7 +688,7 @@ function HelpOptionsScreen() {
 }
 
 function DifferentTimeScreen() {
-  const { token, appointment, phone, navigate, refreshAppointment } = useReminder();
+  const { token, appointment, phone, navigate, refreshAppointment, setAppointment } = useReminder();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const { submitting, error, run } = useSubmit();
   const slotsQuery = useQuery({
@@ -745,7 +736,10 @@ function DifferentTimeScreen() {
         </div>
       ) : slots.length === 0 ? (
         <div className="empty-panel">
-          <p>There are no other times available that day. Please call us and we’ll help you find a new time.</p>
+          <p>
+            {slotsQuery.data?.message ? `${slotsQuery.data.message}. ` : ""}
+            There are no other times available that day. Please call us and we’ll help you find a new time.
+          </p>
         </div>
       ) : (
         <div className="radio-stack radio-stack--slots" role="group" aria-label="Available appointment times">
@@ -772,7 +766,14 @@ function DifferentTimeScreen() {
                 if (!selectedTime) return;
                 try {
                   const result = await apiFor(token).reschedule(token, selectedTime);
-                  writeSession(RESCHEDULED_KEY, JSON.stringify({ ...result, ref: tokenTag(token) }));
+                  // Modified in place: same link, new time, now confirmed.
+                  setAppointment({
+                    ...appointment,
+                    attend_date: result.attend_date,
+                    time: result.time,
+                    end_time: result.end_time,
+                    response: { status: "confirmed", reason: null },
+                  });
                   navigate("/rescheduled");
                 } catch (caught) {
                   // e.g. "That time is no longer available" — reload the list.
@@ -997,17 +998,13 @@ function OtherConcernScreen() {
 }
 
 function ConfirmedScreen({ rescheduled = false }: { rescheduled?: boolean }) {
-  const { token, appointment, phone, navigate } = useReminder();
-  const newTime = rescheduled ? readRescheduled(token) : null;
+  const { appointment, phone, navigate } = useReminder();
 
-  // Only reachable after a reply: otherwise show the reminder itself.
-  if (rescheduled ? !newTime : appointment.response?.status !== "confirmed" || !appointment.can_respond) {
-    return <ReminderScreen />;
-  }
+  // Only for a confirmed appointment (confirm or reschedule); otherwise the reminder itself.
+  if (!isConfirmed(appointment)) return <ReminderScreen />;
 
-  const date = newTime?.attend_date ?? appointment.attend_date;
-  const time = newTime?.time ?? appointment.time;
-  const endTime = newTime ? newTime.end_time : appointment.end_time;
+  // After a reschedule, API 1 already returns the new time (same appointment, modified in place).
+  const { attend_date: date, time, end_time: endTime } = appointment;
   const firstName = appointment.patient_first_name?.trim();
   return (
     <ReminderSheet>
@@ -1029,12 +1026,10 @@ function ConfirmedScreen({ rescheduled = false }: { rescheduled?: boolean }) {
           Add to calendar
         </ActionButton>
         <DirectionsButton variant="secondary" />
-        {/* After a reschedule the reminder screen is this same summary, so there is nothing to return to. */}
-        {rescheduled ? null : (
-          <button className="text-action" type="button" onClick={() => navigate("/")}>
-            Return to appointment details
-          </button>
-        )}
+        {/* Confirmed appointments skip the reminder screen, so offer help here instead of "Return". */}
+        <ActionButton icon={Headphones} variant="secondary" onClick={() => navigate("/help")}>
+          Need help attending?
+        </ActionButton>
       </div>
       <HelpLine prefix="Need to make a change? Call" phone={phone} />
     </ReminderSheet>
@@ -1285,6 +1280,22 @@ export default function AbtReminder() {
 
   const loadError = appointmentQuery.error instanceof ReminderApiError ? appointmentQuery.error : null;
 
+  // A confirmed appointment (confirmed or rescheduled) skips the reminder screen and can't
+  // pick a different time again. Render the target right away and replace the URL, so the
+  // back button doesn't bounce between the two.
+  const isKnownScreen = subPath in ACTION_SCREENS || subPath in RESULT_SCREENS;
+  const redirectTo =
+    appointment && isConfirmed(appointment)
+      ? !isKnownScreen
+        ? "/confirmed"
+        : subPath === "/help/time"
+          ? "/help"
+          : null
+      : null;
+  useEffect(() => {
+    if (redirectTo) navigate(redirectTo, { replace: true });
+  }, [redirectTo]);
+
   let screen: ReactNode;
   if (!token && !PREVIEW_WITHOUT_TOKEN) {
     screen = <ErrorScreen error={null} onRetry={() => undefined} />;
@@ -1293,14 +1304,13 @@ export default function AbtReminder() {
   } else if (!contextValue) {
     screen = <LoadingScreen />;
   } else {
-    const ActionScreen = ACTION_SCREENS[subPath];
-    const ResultScreen = RESULT_SCREENS[subPath];
+    const screenPath = redirectTo ?? subPath;
+    const ActionScreen = ACTION_SCREENS[screenPath];
+    const ResultScreen = RESULT_SCREENS[screenPath];
     const Screen = ActionScreen
       ? contextValue.appointment.can_respond
         ? ActionScreen
-        : readRescheduled(token)
-          ? RESULT_SCREENS["/rescheduled"]
-          : NoLongerScheduledScreen
+        : NoLongerScheduledScreen
       : ResultScreen ?? ReminderScreen;
     screen = (
       <ReminderContext.Provider value={contextValue}>

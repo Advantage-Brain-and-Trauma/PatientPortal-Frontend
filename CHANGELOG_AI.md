@@ -20,6 +20,33 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Feature: confirmed ABT reminders open on the confirmed page; no second reschedule
+> **What:** When the appointment is confirmed — by the confirm API or by an online reschedule
+> (both leave API 1 `response.status = "confirmed"`, `can_respond = true`) — opening the link
+> (or any unknown sub-path) goes straight to `/abt-reminder/confirmed` (URL replaced, so Back
+> doesn't bounce). The confirmed and rescheduled pages now show a "Need help attending?" button
+> (opens the help options) instead of "Return to appointment details". For a confirmed
+> appointment the help options hide "I need a different time" and `/help/time` redirects to
+> `/help`. Per the sheet's "latest reply counts" rule, a later help request
+> (`help_requested`) shows the reminder page and all four options again (agreed with the
+> developer). Removed the now-unreachable "You confirmed this appointment" notice.
+>
+> Also aligned with the updated API sheet: reschedule now modifies the SAME appointment in place
+> (link keeps working, API 1 returns the new time, confirmed) — removed the old
+> sessionStorage/"can_respond=false after reschedule" workaround and use API data; the time-slots
+> `message` (e.g. "Not Available", holiday) is shown when no slots are open. Test mode mirrors
+> both.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/AbtReminder.tsx`; `client/src/lib/reminderApi.ts`
+> (`ReminderTimeSlots.message`).
+>
+> **Auth / case-scoping / patient-data:** No change — same token-only reminder APIs; no new
+> data stored (one fewer sessionStorage key). Verified in test mode: confirm → confirmed page with
+> Add to calendar / Get directions / Need help attending?; reopening the link and Back land on
+> the confirmed page; help shows 3 options; `/help/time` → `/help`; reschedule → new time,
+> confirmed; later help request restores the reminder page; confirmed page fits one fold at
+> 375×600 → 1920×950.
+
 ### Fix: stale cached ABT reminder logo; "Back to …" moved below the logo
 > **What:** Staging serves `/public` files with `Cache-Control: max-age=31536000`, so browsers
 > kept the old uncropped `abt-logo.png` (663×183 with transparent padding) under the same

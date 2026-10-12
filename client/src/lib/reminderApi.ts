@@ -60,7 +60,10 @@ export interface ReminderTimeSlot {
 export interface ReminderTimeSlots {
   attend_date: string;
   current_time: string;
+  /** At most 3: the earliest open times later the same day. */
   slots: ReminderTimeSlot[];
+  /** null when there are slots; otherwise why none are open (e.g. "Not Available", holiday, provider leave). */
+  message?: string | null;
 }
 
 export interface ReminderReschedule {
