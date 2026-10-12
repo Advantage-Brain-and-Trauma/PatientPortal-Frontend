@@ -765,6 +765,13 @@ function DifferentTimeScreen() {
             onClick={() =>
               run(async () => {
                 if (!selectedTime) return;
+                // Re-check first: if it was confirmed meanwhile (e.g. in another tab), it can't
+                // be moved again — updating the appointment sends this screen back to /help.
+                const latest = await apiFor(token).getAppointment(token);
+                if (isConfirmed(latest) || !latest.can_respond) {
+                  setAppointment(latest);
+                  return;
+                }
                 try {
                   const result = await apiFor(token).reschedule(token, selectedTime);
                   // Modified in place: same link, new time, now confirmed.
@@ -1215,6 +1222,29 @@ const RESULT_SCREENS: Record<string, ComponentType> = {
   "/help/requested": RequestReceivedScreen,
 };
 
+/**
+ * Which screen a sub-path may show for the current appointment, or null to stay.
+ *
+ * Confirmed (confirm or online reschedule — latest reply "confirmed"):
+ *   - never shows the reminder screen: "/", unknown paths and "/help/requested" → "/confirmed";
+ *   - can't pick a different time again: "/help/time" → "/help".
+ * Not confirmed:
+ *   - "/confirmed" and "/rescheduled" → "/" (the reminder screen);
+ *   - "/help/requested" without a help request → "/"; unknown paths → "/".
+ */
+function resolveRedirect(subPath: string, appointment: ReminderAppointment): string | null {
+  const isKnownScreen = subPath === "/" || subPath in ACTION_SCREENS || subPath in RESULT_SCREENS;
+  if (isConfirmed(appointment)) {
+    if (!isKnownScreen || subPath === "/" || subPath === "/help/requested") return "/confirmed";
+    if (subPath === "/help/time") return "/help";
+    return null;
+  }
+  if (!isKnownScreen) return "/";
+  if (subPath === "/confirmed" || subPath === "/rescheduled") return "/";
+  if (subPath === "/help/requested" && appointment.response?.status !== "help_requested") return "/";
+  return null;
+}
+
 export default function AbtReminder() {
   const { location, subPath, token, navigate } = useReminderRoute();
   const queryClient = useQueryClient();
@@ -1281,18 +1311,9 @@ export default function AbtReminder() {
 
   const loadError = appointmentQuery.error instanceof ReminderApiError ? appointmentQuery.error : null;
 
-  // A confirmed appointment (confirmed or rescheduled) skips the reminder screen and can't
-  // pick a different time again. Render the target right away and replace the URL, so the
-  // back button doesn't bounce between the two.
-  const isKnownScreen = subPath in ACTION_SCREENS || subPath in RESULT_SCREENS;
-  const redirectTo =
-    appointment && isConfirmed(appointment)
-      ? !isKnownScreen
-        ? "/confirmed"
-        : subPath === "/help/time"
-          ? "/help"
-          : null
-      : null;
+  // Every screen goes through one rule set (see resolveRedirect). Render the target right
+  // away and replace the URL, so the back button doesn't bounce between screens.
+  const redirectTo = appointment ? resolveRedirect(subPath, appointment) : null;
   useEffect(() => {
     if (redirectTo) navigate(redirectTo, { replace: true });
   }, [redirectTo]);

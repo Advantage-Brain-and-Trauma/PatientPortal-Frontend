@@ -20,6 +20,29 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Fix: ABT reminder confirmed-appointment rules enforced on every page
+> **What:** Audit of the two rules (confirmed → never the reminder page, confirmed page offers
+> "Need help attending?"; confirmed → no "I need a different time") across every sub-path found
+> two violations and three URL mismatches. Fixed:
+> - `/help/requested` on a confirmed appointment showed the reminder page with a Confirm button
+>   → now redirects to `/confirmed`.
+> - A time picker left open in another tab could still reschedule after the appointment was
+>   confirmed → "Confirm new time" now re-fetches the appointment first and, if it is confirmed
+>   (or no longer scheduled), sends the screen back to `/help` instead of rescheduling.
+> - Not confirmed: `/confirmed`, `/rescheduled`, `/help/requested` without a help request, and
+>   unknown paths now redirect (URL replaced) to `/abt-reminder` instead of showing the reminder
+>   page under the wrong URL.
+> All screen rules now live in one function, `resolveRedirect(subPath, appointment)`.
+>
+> Verified with the reminder API stubbed in the browser, for every path × state (not confirmed /
+> confirmed / help requested), plus confirm, reschedule, help-request and the second-tab case.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/AbtReminder.tsx`.
+>
+> **Auth / case-scoping / patient-data:** No change. Note: hiding the option is UX only — the
+> backend still accepts a reschedule after a later help request (latest reply = help_requested)
+> or a direct API call; enforcing "no second reschedule" needs a backend rule.
+
 ### Change: ABT reminder test mode turned off
 > **What:** At the developer's request, set `PREVIEW_WITHOUT_TOKEN = false`. Opening
 > `/abt-reminder` without `?token=` shows "This link is not valid." again instead of the sample
