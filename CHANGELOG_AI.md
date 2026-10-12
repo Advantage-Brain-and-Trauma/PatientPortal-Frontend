@@ -20,6 +20,17 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Change: ABT reminder test mode turned off
+> **What:** At the developer's request, set `PREVIEW_WITHOUT_TOKEN = false`. Opening
+> `/abt-reminder` without `?token=` shows "This link is not valid." again instead of the sample
+> appointment; token links are unchanged. The test-mode code is kept (flag off) for local testing.
+> Verified locally: no-token page shows the invalid-link screen and makes no API call.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/AbtReminder.tsx`.
+>
+> **Auth / case-scoping / patient-data:** Removes the sample-data page from public no-token URLs;
+> this was the prerequisite flagged before any `main` release.
+
 ### Feature: confirmed ABT reminders open on the confirmed page; no second reschedule
 > **What:** When the appointment is confirmed — by the confirm API or by an online reschedule
 > (both leave API 1 `response.status = "confirmed"`, `can_respond = true`) — opening the link

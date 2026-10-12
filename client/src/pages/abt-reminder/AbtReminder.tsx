@@ -104,7 +104,8 @@ const CONCERN_OPTIONS: Choice[] = [
 // Nothing is sent to the backend; links WITH a token always use the real API.
 // ---------------------------------------------------------------------------
 
-const PREVIEW_WITHOUT_TOKEN = true;
+// Off: a link without ?token= shows "This link is not valid." Set to true only for local testing.
+const PREVIEW_WITHOUT_TOKEN = false;
 
 const PREVIEW_APPOINTMENT: ReminderAppointment = {
   patient_first_name: "Jamie",
