@@ -706,3 +706,129 @@
     transform: translateY(0);
   }
 }
+
+/*
+ * States added for the live API (not in the original prototype) — styled with
+ * the prototype palette so they sit naturally next to the original screens.
+ */
+.abt-reminder .status-notice,
+.abt-reminder .form-error {
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  font-size: 0.98rem;
+  line-height: 1.4;
+  display: flex;
+}
+.abt-reminder .status-notice {
+  color: #253e57;
+  background: #f8efd8b3;
+  border: 1px solid #be8d2e4d;
+  border-radius: 0.85rem;
+  padding: 0.8rem 0.95rem;
+}
+.abt-reminder .form-error {
+  color: #941c33;
+  background: #fae8e6b8;
+  border: 1px solid #941c3340;
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  font-weight: 600;
+}
+.abt-reminder .form-error--field {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 0.9rem;
+}
+.abt-reminder .status-notice svg,
+.abt-reminder .form-error svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.1rem;
+}
+.abt-reminder .status-notice svg {
+  color: #bd8d2e;
+}
+.abt-reminder .form-panel .form-error:not(.form-error--field) {
+  margin: 1rem 0 0;
+}
+.abt-reminder .empty-panel {
+  color: #42576d;
+  text-align: center;
+  background: #fffffc94;
+  border: 1.5px dashed #8a7d6b4d;
+  border-radius: 1rem;
+  padding: 1.15rem 1rem;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.abt-reminder .empty-panel p {
+  margin: 0;
+}
+.abt-reminder .abt-spin {
+  animation: abt-reminder-spin 0.9s linear infinite;
+}
+@keyframes abt-reminder-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.abt-reminder .skeleton-block {
+  background: linear-gradient(90deg, #efe6d4 0%, #f8f1e2 50%, #efe6d4 100%);
+  background-size: 200% 100%;
+  border-radius: 0.6rem;
+  animation: abt-reminder-shimmer 1.4s ease-in-out infinite;
+}
+.abt-reminder .skeleton-block--eyebrow {
+  width: 40%;
+  height: 0.85rem;
+  margin: 0 auto 0.9rem;
+}
+.abt-reminder .skeleton-block--title {
+  width: 100%;
+  height: 2.6rem;
+  margin-bottom: 0.5rem;
+}
+.abt-reminder .skeleton-block--short {
+  width: 65%;
+}
+.abt-reminder .skeleton-block--line {
+  width: 80%;
+  height: 1.2rem;
+  margin-top: 1rem;
+}
+.abt-reminder .skeleton-block--card {
+  height: 300px;
+  border-radius: 1.15rem;
+  margin: 1.75rem 0;
+}
+.abt-reminder .skeleton-block--button {
+  height: 58px;
+  border-radius: 0.9rem;
+}
+.abt-reminder .skeleton-block--choice {
+  height: 84px;
+  border-radius: 1rem;
+}
+@keyframes abt-reminder-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .abt-reminder .skeleton-block,
+  .abt-reminder .abt-spin {
+    animation: none;
+  }
+}
+@media (min-width: 720px) {
+  .abt-reminder .skeleton-block--eyebrow {
+    margin-left: 0;
+  }
+}

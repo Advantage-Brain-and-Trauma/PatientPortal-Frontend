@@ -20,6 +20,38 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Feature: ABT appointment reminder wired to the appointment-reminder API
+> **What:** Replaced the prototype's hardcoded sample data with the 5 endpoints from the
+> "ABT Reminder APIs" sheet: `GET appointment-reminder/{token}` (reloaded on every screen),
+> `POST …/confirm`, `GET …/time-slots`, `POST …/reschedule`, `POST …/help-request`
+> (category/option codes per the "Help Request Options" tab; note trimmed, max 500, required
+> for "other"). The SMS link opens `/abt-reminder?token=…`; the token is carried on every
+> sub-page URL. Real data drives the name (fallback "You're all set."), date/time (formatted
+> from clinic-local strings, no timezone shift), provider · visit type, location/address
+> (rows hidden when null), facility phone (fallback 877-487-8289), telehealth ("Virtual visit",
+> no directions), and the `.ics` (real start/end, `TZID=America/Chicago`). New states in the
+> prototype palette: loading skeletons, invalid link (404 / missing token), past appointment
+> (410), retryable load error (429/5xx/network), "no longer scheduled" (`can_respond=false`
+> hides actions), returning-visitor notices, empty slots, inline backend errors (field errors
+> under the note with `aria-invalid`), spinner + double-submit guard. After an online
+> reschedule the link keeps showing the new-time summary (API 1 then returns
+> `can_respond=false`). Visual design of the original screens unchanged.
+>
+> **Files/areas:**
+> - `client/src/lib/reminderApi.ts` (new) — separate axios instance (same `VITE_API_BASE_URL`
+>   backend), typed calls, error mapping to `ReminderApiError`.
+> - `client/src/pages/abt-reminder/AbtReminder.tsx` — API-driven screens, react-query loading.
+> - `client/src/pages/abt-reminder/abt-reminder.css` — styles for the new states (scoped).
+>
+> **Auth / case-scoping / patient-data:** The reminder token is the only credential and is
+> sent only in the URL path of these 5 calls. The separate axios instance never attaches the
+> portal JWT (verified: header absent even with `ahcs_token` set), never injects `?case_id=`,
+> and never triggers the global 401 logout. The token is not logged or written to storage;
+> sessionStorage holds only the reschedule result (tagged with a non-reversible hash of the
+> token) and the last request label. No other portal route/guard changed. Verified with the
+> 5 API responses stubbed in the browser (no local backend was running); not yet tried
+> against the real backend.
+
 ### Feature: public ABT appointment reminder page (`/abt-reminder/*`)
 > **What:** Ported the approved Manus prototype (abt-reminder-aoacmhju.manus.space) into the
 > portal as an exact replica, served publicly (no login) at `/abt-reminder` and its sub-pages:
