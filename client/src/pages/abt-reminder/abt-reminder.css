@@ -27,7 +27,7 @@
   color: #102a43;
   background-color: #f7f2e9;
   background-image: linear-gradient(#fcfaf5a6, #fcfaf5d6),
-    url(/abt-reminder/abt-ivory-phoenix-texture.webp);
+    url(./assets/abt-ivory-phoenix-texture.webp);
   background-position: top;
   background-size: cover;
   background-attachment: fixed;
@@ -1388,5 +1388,18 @@
   .abt-reminder .support-intro__art {
     width: 40px;
     height: 40px;
+  }
+}
+
+/* "Back to …" sits below the logo header, left-aligned above the content. */
+.abt-reminder .brand-header + .back-link {
+  margin: 0 0 clamp(0.15rem, 0.8dvh, 0.5rem) -0.2rem;
+}
+@media (max-width: 719px) and (max-height: 620px) {
+  .abt-reminder .brand-header + .back-link {
+    margin-bottom: 0;
+  }
+  .abt-reminder .brand-header--compact {
+    margin-bottom: 0.25rem;
   }
 }

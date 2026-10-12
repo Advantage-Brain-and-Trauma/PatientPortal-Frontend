@@ -49,6 +49,13 @@ import ReminderApi, {
   type ReminderReschedule,
 } from "@/lib/reminderApi";
 import "./abt-reminder.css";
+// Imported (not served from /public) so the build gives each image a
+// content-hashed file name — a changed image can never be served stale from a
+// browser's long-lived cache.
+import LOGO_SRC from "./assets/abt-logo.png";
+import TRANSPORTATION_ART from "./assets/abt-transportation-support.webp";
+import LOCATION_ART from "./assets/abt-location-support.webp";
+import CARE_ART from "./assets/abt-care-support.webp";
 
 /*
  * Public ABT appointment reminder (/abt-reminder/*?token=…).
@@ -58,12 +65,6 @@ import "./abt-reminder.css";
  * Appointment details come from the appointment-reminder API and are reloaded
  * on every screen; confirm / reschedule / help requests post back to it.
  */
-
-const ASSET_BASE = "/abt-reminder";
-const LOGO_SRC = `${ASSET_BASE}/abt-logo.png`;
-const TRANSPORTATION_ART = `${ASSET_BASE}/abt-transportation-support.webp`;
-const LOCATION_ART = `${ASSET_BASE}/abt-location-support.webp`;
-const CARE_ART = `${ASSET_BASE}/abt-care-support.webp`;
 
 const FONT_HREF = "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap";
 const PAGE_TITLE = "ABT Appointment Reminder";
@@ -375,13 +376,13 @@ function PageSheet({
 }) {
   return (
     <section className="page-sheet enter-screen" aria-live="polite">
+      <BrandHeader compact={!!backTo} />
       {backTo && onBack ? (
         <button className="back-link" onClick={() => onBack(backTo)} type="button">
           <ArrowLeft aria-hidden="true" />
           {backLabel}
         </button>
       ) : null}
-      <BrandHeader compact={!!backTo} />
       {children}
     </section>
   );

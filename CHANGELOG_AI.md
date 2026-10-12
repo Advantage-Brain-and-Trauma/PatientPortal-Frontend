@@ -20,6 +20,26 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Fix: stale cached ABT reminder logo; "Back to …" moved below the logo
+> **What:** Staging serves `/public` files with `Cache-Control: max-age=31536000`, so browsers
+> kept the old uncropped `abt-logo.png` (663×183 with transparent padding) under the same
+> name, which with the new CSS showed an off-centre, small logo with a gap under it. The 5
+> reminder images moved from `client/public/abt-reminder/` into
+> `client/src/pages/abt-reminder/assets/` and are now imported (texture via a relative CSS
+> `url()`), so the build emits content-hashed names (e.g. `assets/abt-logo-CIlNUmcx.png`) and a
+> changed image can never be served stale. Also moved the "Back to …" link below the logo
+> header (all screen sizes), with a short-phone spacing step to keep the no-scroll fit.
+> Verified: logo centred on mobile, texture/illustrations load, no overflow at 375×600,
+> 390×664 and 1440×760.
+>
+> **Files/areas:** `client/public/abt-reminder/*` (removed) → `client/src/pages/abt-reminder/assets/*`;
+> `client/src/pages/abt-reminder/AbtReminder.tsx` (image imports, header/back-link order);
+> `client/src/pages/abt-reminder/abt-reminder.css` (texture url, back-link spacing).
+>
+> **Auth / case-scoping / patient-data:** None — assets/presentation only. Note: the staging
+> rsync has no `--delete`, so the old `abt-reminder/` image folder stays on the server
+> (harmless, unreferenced).
+
 ### Enhancement: ABT reminder logo header — bigger logo, centred rule, mobile top layout
 > **What:** Larger logo (desktop up to 76px tall, mobile 52–64px; compact help-screen header
 > in proportion). Desktop: the gold rule is now vertically centred beside the logo (was pinned
