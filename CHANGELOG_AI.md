@@ -20,6 +20,25 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Enhancement: ABT reminder screens fit one fold (no scroll), vertically centred
+> **What:** Every `/abt-reminder` screen (reminder, help options, different time,
+> transportation, location, other concern, confirmed, rescheduled, request received) now fits
+> the visible viewport without scrolling and is centred top-to-bottom on phones and desktops.
+> Sizes (headings, text, spacing, card rows, buttons, logo, illustrations) scale with viewport
+> height via `clamp(…, dvh, …)` and reach the original prototype sizes on tall screens, plus an
+> extra-compact step at `max-height: 680px`. Layout changes approved by the developer: help-form
+> options in a 2-column grid (option icon hidden on phones), note box 2 rows, time slots as slim
+> rows (time large, date as caption), current-appointment strip on one line under its label.
+> Fallback (developer's choice): no fixed heights or `overflow: hidden`, so on viewports shorter
+> than ~600px the page scrolls normally instead of clipping. Verified no overflow on all screens
+> at 375×600, 390×664, 412×780, 1366×657, 1440×760 and 1920×950.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/abt-reminder.css` (new "Single-fold layout"
+> section at the end, scoped under `.abt-reminder`); `client/src/pages/abt-reminder/AbtReminder.tsx`
+> (note textarea `rows={2}`, `radio-stack--slots` class on the time list).
+>
+> **Auth / case-scoping / patient-data:** Presentation only — no API, routing or auth changes.
+
 ### Temporary: ABT reminder test mode without a token (remove before production)
 > **What:** At the developer's request, opening `/abt-reminder` with no `?token=` (local and
 > staging) now shows the prototype's sample appointment (Jamie / Dr. Maya Patel / Sep 22,

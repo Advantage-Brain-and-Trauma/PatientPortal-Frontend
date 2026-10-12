@@ -832,3 +832,483 @@
     margin-left: 0;
   }
 }
+
+/* ==========================================================================
+ * Single-fold layout
+ * Every screen fits the visible viewport without scrolling and is centred
+ * top-to-bottom, on phones and desktops. Sizes scale with viewport HEIGHT
+ * (dvh, with vh fallback) and reach the original prototype sizes on tall
+ * screens. No fixed heights / overflow:hidden: on very short viewports
+ * (< ~600px, e.g. iPhone SE, landscape phones) the page falls back to normal
+ * scrolling instead of clipping content.
+ * ========================================================================== */
+.abt-reminder .prototype-root,
+.abt-reminder .prototype-stage {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.abt-reminder .prototype-stage {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+.abt-reminder .page-sheet {
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(0.6rem, 2dvh, 1.35rem) 1.15rem;
+  display: flex;
+}
+@media (min-width: 720px) {
+  .abt-reminder .prototype-stage {
+    padding: clamp(0.5rem, 2dvh, 1.5rem) 1rem;
+  }
+  .abt-reminder .page-sheet {
+    min-height: auto;
+    padding: clamp(0.9rem, 2.8dvh, 2rem) 2.5rem clamp(1rem, 3dvh, 2.75rem);
+  }
+}
+
+/* Header + back link */
+.abt-reminder .back-link {
+  align-self: flex-start;
+  min-height: clamp(28px, 4.2dvh, 44px);
+  padding-block: 0;
+}
+.abt-reminder .brand-header {
+  margin: 0 auto clamp(0.6rem, 2.2dvh, 1.45rem);
+}
+.abt-reminder .brand-header--compact {
+  margin: 0 auto clamp(0.5rem, 2dvh, 1.35rem);
+}
+.abt-reminder .brand-header:after {
+  margin-bottom: clamp(0.4rem, 1.4dvh, 0.95rem);
+}
+.abt-reminder .brand-header img {
+  width: auto;
+  max-width: min(88%, 344px);
+  height: clamp(32px, 7dvh, 95px);
+}
+.abt-reminder .brand-header--compact img {
+  max-width: min(76%, 300px);
+  height: clamp(28px, 5.6dvh, 83px);
+}
+
+/* Intro text */
+.abt-reminder .page-intro {
+  margin-bottom: clamp(0.5rem, 1.8dvh, 1.55rem);
+}
+.abt-reminder .eyebrow {
+  margin-bottom: clamp(0.25rem, 0.8dvh, 0.45rem);
+  font-size: clamp(0.68rem, 1.3dvh, 0.82rem);
+}
+.abt-reminder h1 {
+  font-size: clamp(1.35rem, min(8.5vw, 4.6dvh), 3.45rem);
+}
+.abt-reminder .success-intro h1 {
+  font-size: clamp(1.35rem, min(8.5vw, 4.4dvh), 3.2rem);
+}
+.abt-reminder .page-intro .lede,
+.abt-reminder .success-intro .lede,
+.abt-reminder .support-intro .lede {
+  margin-top: clamp(0.3rem, 1.2dvh, 1.05rem);
+  font-size: clamp(0.92rem, min(4.2vw, 2.15dvh), 1.32rem);
+  line-height: 1.3;
+}
+
+/* Appointment card */
+.abt-reminder .appointment-card {
+  margin: clamp(0.6rem, 1.9dvh, 1.75rem) 0;
+}
+.abt-reminder .appointment-card__date {
+  margin: clamp(0.4rem, 1.1dvh, 0.75rem);
+  padding: clamp(0.55rem, 1.8dvh, 1.15rem) 1rem;
+}
+.abt-reminder .appointment-card__date svg {
+  width: clamp(1.8rem, 4dvh, 2.45rem);
+  height: clamp(1.8rem, 4dvh, 2.45rem);
+}
+.abt-reminder .appointment-card__date p {
+  font-size: clamp(0.95rem, 1.9dvh, 1.1rem);
+}
+.abt-reminder .appointment-card__date strong {
+  font-size: clamp(1.4rem, 3.4dvh, 2rem);
+}
+.abt-reminder .detail-row {
+  min-height: clamp(36px, 5.6dvh, 68px);
+  padding: clamp(0.3rem, 1.1dvh, 0.85rem) 0.25rem;
+  font-size: clamp(0.9rem, 1.8dvh, 1rem);
+}
+.abt-reminder .detail-row svg {
+  width: clamp(1.15rem, 2.6dvh, 1.55rem);
+  height: clamp(1.15rem, 2.6dvh, 1.55rem);
+}
+
+/* Buttons + footer lines */
+.abt-reminder .action-stack,
+.abt-reminder .choice-stack,
+.abt-reminder .radio-stack {
+  gap: clamp(0.45rem, 1.3dvh, 0.8rem);
+}
+.abt-reminder .action-button {
+  min-height: clamp(42px, 6.2dvh, 58px);
+  padding: clamp(0.5rem, 1.4dvh, 0.9rem) 1.15rem;
+  font-size: clamp(0.95rem, 1.9dvh, 1.06rem);
+}
+.abt-reminder .action-button svg {
+  width: clamp(1.15rem, 2.4dvh, 1.45rem);
+  height: clamp(1.15rem, 2.4dvh, 1.45rem);
+}
+.abt-reminder .text-action {
+  min-height: clamp(30px, 4.6dvh, 44px);
+  margin-top: 0;
+}
+.abt-reminder .help-line,
+.abt-reminder .status-footnote {
+  margin-top: clamp(0.55rem, 1.8dvh, 1.4rem);
+  font-size: clamp(0.82rem, 1.6dvh, 0.96rem);
+}
+.abt-reminder .status-notice,
+.abt-reminder .form-error {
+  margin-bottom: clamp(0.5rem, 1.4dvh, 1rem);
+  padding: clamp(0.45rem, 1.2dvh, 0.8rem) 0.95rem;
+  font-size: clamp(0.86rem, 1.7dvh, 0.98rem);
+}
+.abt-reminder .form-error--field {
+  padding: 0;
+}
+
+/* Current-appointment strip */
+.abt-reminder .appointment-context {
+  gap: clamp(0.65rem, 1.5dvh, 1rem);
+  margin: clamp(0.45rem, 1.4dvh, 1.4rem) 0;
+  padding: clamp(0.45rem, 1.2dvh, 1rem) 1.05rem;
+}
+.abt-reminder .appointment-context > svg {
+  width: clamp(1.6rem, 3.6dvh, 2.25rem);
+  height: clamp(1.6rem, 3.6dvh, 2.25rem);
+}
+.abt-reminder .appointment-context > div > strong {
+  font-size: clamp(0.95rem, 1.9dvh, 1.05rem);
+}
+.abt-reminder .appointment-context > div > strong,
+.abt-reminder .appointment-context > div > span {
+  display: inline;
+}
+.abt-reminder .appointment-context > div > span {
+  margin-top: 0;
+  font-size: clamp(0.88rem, 1.7dvh, 1rem);
+}
+/* Date/time and provider share one line: "Tue, Sep 22 · 10:30 AM · Dr. …" */
+.abt-reminder .appointment-context > div > span:before {
+  content: " · ";
+}
+
+/* Help options list */
+.abt-reminder .choice-link {
+  grid-template-columns: auto 1fr auto;
+  min-height: clamp(48px, 7.4dvh, 76px);
+  padding: clamp(0.4rem, 1.1dvh, 0.85rem) 1rem;
+}
+.abt-reminder .choice-link__icon {
+  width: clamp(34px, 4.8dvh, 44px);
+  height: clamp(34px, 4.8dvh, 44px);
+}
+.abt-reminder .choice-link__icon svg {
+  width: clamp(1.1rem, 2.4dvh, 1.45rem);
+  height: clamp(1.1rem, 2.4dvh, 1.45rem);
+}
+
+/* Section / panel headings */
+.abt-reminder .section-heading {
+  margin: clamp(0.6rem, 2dvh, 1.55rem) 0 clamp(0.45rem, 1.3dvh, 0.85rem);
+}
+.abt-reminder .section-heading h2,
+.abt-reminder .form-panel h2 {
+  font-size: clamp(1.1rem, 2.6dvh, 1.45rem);
+}
+
+/* Radio choices (time slots + help options) */
+.abt-reminder .radio-choice {
+  grid-template-columns: clamp(20px, 2.6dvh, 26px) clamp(30px, 4.4dvh, 42px) 1fr;
+  gap: clamp(0.5rem, 1.2dvh, 0.8rem);
+  min-height: clamp(46px, 7dvh, 84px);
+  padding: clamp(0.45rem, 1.2dvh, 0.9rem) 1rem;
+}
+.abt-reminder .radio-choice__control {
+  width: clamp(20px, 2.4dvh, 24px);
+  height: clamp(20px, 2.4dvh, 24px);
+}
+.abt-reminder .radio-choice__control span {
+  width: clamp(10px, 1.2dvh, 12px);
+  height: clamp(10px, 1.2dvh, 12px);
+}
+.abt-reminder .radio-choice__icon-wrap {
+  width: clamp(30px, 4.4dvh, 40px);
+  height: clamp(30px, 4.4dvh, 40px);
+}
+.abt-reminder .radio-choice__icon {
+  width: clamp(1rem, 2.2dvh, 1.35rem);
+  height: clamp(1rem, 2.2dvh, 1.35rem);
+}
+
+/* Time slots: time first, date as a small caption */
+.abt-reminder .radio-stack--slots .radio-choice {
+  min-height: clamp(46px, 6.6dvh, 72px);
+}
+.abt-reminder .radio-stack--slots .radio-choice__copy {
+  flex-direction: column-reverse;
+  display: flex;
+}
+.abt-reminder .radio-stack--slots .radio-choice__copy > strong {
+  margin-top: 0;
+  font-size: clamp(1.15rem, 2.8dvh, 1.55rem);
+}
+.abt-reminder .radio-stack--slots .radio-choice__copy > span {
+  color: #5e6b79;
+  margin-top: 0.15rem;
+  font-size: clamp(0.78rem, 1.5dvh, 0.9rem);
+  font-weight: 600;
+}
+
+/* Help-form options: 2-column grid */
+.abt-reminder .radio-stack--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.4rem, 1.1dvh, 0.65rem);
+}
+.abt-reminder .radio-stack--compact .radio-choice {
+  grid-template-columns: clamp(20px, 2.4dvh, 24px) clamp(28px, 4dvh, 36px) 1fr;
+  gap: 0.55rem;
+  min-height: clamp(48px, 7dvh, 70px);
+  padding: clamp(0.4rem, 1.1dvh, 0.75rem) 0.75rem;
+}
+.abt-reminder .radio-stack--compact .radio-choice__icon-wrap {
+  width: clamp(28px, 4dvh, 36px);
+  height: clamp(28px, 4dvh, 36px);
+}
+.abt-reminder .radio-stack--compact .radio-choice__copy > span {
+  font-size: clamp(0.85rem, 1.7dvh, 0.98rem);
+  line-height: 1.2;
+}
+@media (max-width: 719px) {
+  .abt-reminder .radio-stack--compact .radio-choice {
+    grid-template-columns: 20px 1fr;
+    gap: 0.5rem;
+    padding-inline: 0.65rem;
+  }
+  .abt-reminder .radio-stack--compact .radio-choice__icon-wrap {
+    display: none;
+  }
+}
+
+/* Help forms */
+.abt-reminder .support-intro {
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: clamp(0.5rem, 1.6dvh, 1.25rem);
+}
+.abt-reminder .support-intro__art {
+  width: clamp(48px, 8dvh, 96px);
+  height: clamp(48px, 8dvh, 96px);
+}
+.abt-reminder .support-intro img {
+  width: 82%;
+  height: 82%;
+}
+.abt-reminder .form-panel {
+  margin-top: clamp(0.45rem, 1.4dvh, 1.25rem);
+  padding: clamp(0.6rem, 1.5dvh, 1.1rem);
+}
+.abt-reminder .form-panel h2 {
+  margin-bottom: clamp(0.45rem, 1.4dvh, 1rem);
+}
+.abt-reminder .field-label {
+  margin: clamp(0.4rem, 1.1dvh, 1rem) 0 clamp(0.2rem, 0.6dvh, 0.45rem);
+  font-size: clamp(0.88rem, 1.7dvh, 0.98rem);
+}
+.abt-reminder textarea {
+  height: clamp(46px, 7dvh, 94px);
+  min-height: 0;
+  padding: clamp(0.45rem, 1.2dvh, 0.85rem);
+}
+.abt-reminder .radio-stack + .action-button,
+.abt-reminder .form-panel .action-button,
+.abt-reminder .time-actions {
+  margin-top: clamp(0.55rem, 1.6dvh, 1rem);
+}
+.abt-reminder .privacy-note {
+  margin-top: 0.35rem;
+  font-size: clamp(0.76rem, 1.5dvh, 0.82rem);
+}
+.abt-reminder .empty-panel {
+  padding: clamp(0.7rem, 1.8dvh, 1.15rem) 1rem;
+}
+
+/* Location card */
+.abt-reminder .location-card {
+  grid-template-columns: auto 1fr;
+  gap: clamp(0.4rem, 1.1dvh, 0.85rem) 1rem;
+  margin: clamp(0.45rem, 1.4dvh, 1.4rem) 0;
+  padding: clamp(0.55rem, 1.4dvh, 1rem);
+}
+.abt-reminder .location-card > svg {
+  width: clamp(1.6rem, 3.6dvh, 2.4rem);
+  height: clamp(1.6rem, 3.6dvh, 2.4rem);
+}
+.abt-reminder .location-card > div > span {
+  margin-top: 0;
+}
+
+/* Result screens */
+.abt-reminder .success-intro {
+  margin-bottom: clamp(0.6rem, 2dvh, 1.6rem);
+}
+.abt-reminder .success-mark {
+  width: clamp(44px, 6.4dvh, 78px);
+  height: clamp(44px, 6.4dvh, 78px);
+  margin-bottom: clamp(0.4rem, 1.3dvh, 1.15rem);
+}
+.abt-reminder .success-mark svg {
+  width: clamp(1.5rem, 4dvh, 2.5rem);
+  height: clamp(1.5rem, 4dvh, 2.5rem);
+}
+.abt-reminder .success-intro .eyebrow {
+  margin-bottom: clamp(0.35rem, 1.2dvh, 0.9rem);
+}
+.abt-reminder .success-art-frame {
+  width: clamp(52px, 8.5dvh, 112px);
+  height: clamp(52px, 8.5dvh, 112px);
+  margin-bottom: clamp(0.4rem, 1.2dvh, 1rem);
+}
+.abt-reminder .success-art {
+  width: 82%;
+  height: 82%;
+}
+.abt-reminder .request-card {
+  margin: clamp(0.45rem, 1.5dvh, 1.4rem) 0;
+}
+.abt-reminder .request-card__row {
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  padding: clamp(0.5rem, 1.3dvh, 1.1rem) clamp(0.7rem, 1.6dvh, 1.1rem);
+}
+.abt-reminder .request-card__row > svg {
+  width: clamp(1.6rem, 3.6dvh, 2.25rem);
+  height: clamp(1.6rem, 3.6dvh, 2.25rem);
+}
+.abt-reminder .request-card__row > div > span {
+  margin-top: 0;
+}
+
+/* Loading skeleton follows the same scale */
+.abt-reminder .skeleton-block--card {
+  height: clamp(160px, 30dvh, 300px);
+  margin: clamp(0.75rem, 2.4dvh, 1.75rem) 0;
+}
+.abt-reminder .skeleton-block--title {
+  height: clamp(1.6rem, 4.6dvh, 2.6rem);
+}
+.abt-reminder .skeleton-block--button {
+  height: clamp(42px, 6.2dvh, 58px);
+}
+.abt-reminder .skeleton-block--choice {
+  height: clamp(46px, 6.6dvh, 72px);
+}
+
+/* Extra-compact step for short screens (≈600–680px visible height). */
+@media (max-height: 680px) {
+  .abt-reminder .page-sheet {
+    padding-block: 0.5rem;
+  }
+  .abt-reminder .back-link {
+    min-height: 26px;
+  }
+  .abt-reminder .brand-header img {
+    height: 38px;
+  }
+  .abt-reminder .brand-header--compact img {
+    height: 30px;
+  }
+  .abt-reminder .brand-header,
+  .abt-reminder .brand-header--compact {
+    margin-bottom: 0.4rem;
+  }
+  .abt-reminder .brand-header:after {
+    margin-bottom: 0.3rem;
+  }
+  .abt-reminder h1,
+  .abt-reminder .success-intro h1 {
+    font-size: clamp(1.25rem, 6.6vw, 1.6rem);
+  }
+  .abt-reminder .page-intro .lede,
+  .abt-reminder .success-intro .lede,
+  .abt-reminder .support-intro .lede {
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+  }
+  .abt-reminder .success-mark,
+  .abt-reminder .success-art-frame {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.3rem;
+  }
+  .abt-reminder .success-mark svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+  .abt-reminder .success-intro .eyebrow {
+    margin-bottom: 0.25rem;
+  }
+  .abt-reminder .appointment-card__date {
+    padding-block: 0.45rem;
+  }
+  .abt-reminder .appointment-card__date strong {
+    font-size: 1.3rem;
+  }
+  .abt-reminder .detail-row {
+    min-height: 32px;
+    padding-block: 0.2rem;
+  }
+  .abt-reminder .action-button {
+    min-height: 40px;
+    padding-block: 0.4rem;
+  }
+  .abt-reminder .text-action {
+    min-height: 28px;
+  }
+  .abt-reminder .choice-link {
+    min-height: 44px;
+  }
+  .abt-reminder .radio-choice,
+  .abt-reminder .radio-stack--slots .radio-choice {
+    min-height: 42px;
+    padding-block: 0.35rem;
+  }
+  .abt-reminder .radio-stack--compact .radio-choice {
+    min-height: 44px;
+  }
+  .abt-reminder .support-intro__art {
+    width: 44px;
+    height: 44px;
+  }
+  .abt-reminder textarea {
+    height: 42px;
+  }
+  .abt-reminder .request-card__row {
+    padding-block: 0.4rem;
+  }
+  .abt-reminder .location-card {
+    gap: 0.35rem 1rem;
+    padding-block: 0.45rem;
+  }
+  .abt-reminder .location-card .action-button {
+    min-height: 36px;
+  }
+  .abt-reminder .form-panel h2 {
+    margin-bottom: 0.35rem;
+  }
+  .abt-reminder .help-line,
+  .abt-reminder .status-footnote {
+    margin-top: 0.45rem;
+  }
+}

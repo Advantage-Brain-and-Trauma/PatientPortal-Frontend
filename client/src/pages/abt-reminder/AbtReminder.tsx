@@ -747,7 +747,7 @@ function DifferentTimeScreen() {
           <p>There are no other times available that day. Please call us and we’ll help you find a new time.</p>
         </div>
       ) : (
-        <div className="radio-stack" role="group" aria-label="Available appointment times">
+        <div className="radio-stack radio-stack--slots" role="group" aria-label="Available appointment times">
           {slots.map((slot) => (
             <RadioChoice
               key={slot.time}
@@ -847,7 +847,7 @@ function NoteField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Add a brief note"
-        rows={3}
+        rows={2}
         maxLength={REMINDER_NOTE_MAX_LENGTH}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
