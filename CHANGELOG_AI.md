@@ -20,6 +20,17 @@ and notable configuration/docs changes.
 
 ## 2026-10-12
 
+### Fix: ABT reminder logo had empty space below it
+> **What:** The prototype's logo file (663×183) carried transparent padding — the artwork only
+> fills the top-left 381×119 — so the logo box showed a blank band underneath (and to the right).
+> Cropped the PNG losslessly to its artwork (now 381×119, 27.7 KB) and scaled the CSS logo
+> heights by 119/183 so the visible logo stays the same size and only the gap is gone.
+>
+> **Files/areas:** `client/public/abt-reminder/abt-logo.png`;
+> `client/src/pages/abt-reminder/abt-reminder.css` (brand-header img heights).
+>
+> **Auth / case-scoping / patient-data:** None — asset/presentation only.
+
 ### Enhancement: ABT reminder screens fit one fold (no scroll), vertically centred
 > **What:** Every `/abt-reminder` screen (reminder, help options, different time,
 > transportation, location, other concern, confirmed, rescheduled, request received) now fits
