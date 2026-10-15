@@ -20,6 +20,35 @@ and notable configuration/docs changes.
 
 ## 2026-10-15
 
+### Fix: ABT reminder keeps the confirmed state after a later help request
+> **What:** Follows the backend change in the "ABT Reminder APIs" sheet: once confirmed (confirm or
+> online reschedule), `response.status` stays `"confirmed"` after a help request and the help text
+> goes to the new `response.help_reason`; an online reschedule of a confirmed appointment returns
+> 422 "This appointment is already confirmed…". Frontend changes:
+> - `/help/requested` is allowed for a confirmed appointment that has a `help_reason` (it used to
+>   redirect to `/confirmed`, so the patient never saw the request was received). The page says
+>   "Your appointment is confirmed for…" and drops the "until a new time is confirmed" footnote;
+>   the request label falls back to `help_reason`.
+> - Confirmed page shows "Request received, our team will contact you: …" when `help_reason` is
+>   set (clamped to two lines; the decorative check mark is hidden then so it still fits one fold).
+> - "Choose a new appointment time" on an appointment that turned out to be confirmed (pre-check,
+>   or the new 422) keeps the message visible on `/help` after the redirect, via a short-lived
+>   sessionStorage notice (60s, shown only if the appointment is confirmed, cleared once read).
+> - Test mode's in-memory API follows the new rules. `PREVIEW_WITHOUT_TOKEN` is back to `false`.
+>
+> Works with the old backend too (no `help_reason` → previous behaviour). Verified in test mode:
+> confirm → help request → request-received → confirmed page with notice, "different time" stays
+> hidden; help request before confirming → unchanged flow; no first-fold scroll on the confirmed
+> page with a long note at 1365×600–760. The 422 race itself couldn't be triggered locally; the
+> `/help` notice was checked by seeding it.
+>
+> **Files/areas:** `client/src/lib/reminderApi.ts` (`response.help_reason` type),
+> `client/src/pages/abt-reminder/AbtReminder.tsx`, `client/src/pages/abt-reminder/abt-reminder.css`.
+>
+> **Auth / patient-data:** `help_reason` can contain the patient's own note; it is shown only to
+> the token holder on their own reminder page, same as before. sessionStorage holds only the
+> generic backend message, never the token or note.
+
 ### Fix: ABT reminder logo too small / soft on desktop
 > **What:** The logo asset is a 381×119 PNG with thin "BRAIN AND TRAUMA" lettering (no
 > higher-resolution source exists in the repo or its history). On short desktop screens the

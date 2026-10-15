@@ -45,7 +45,13 @@ export interface ReminderAppointment {
   is_virtual: number;
   attend_status: string;
   can_respond: boolean;
-  response: { status: ResponseStatus; reason: string | null };
+  /**
+   * status stays "confirmed" after a later help request.
+   * reason: help text sent before confirming, otherwise null.
+   * help_reason: latest help text sent after confirming, otherwise null
+   * (optional so older backends without the field still type-check).
+   */
+  response: { status: ResponseStatus; reason: string | null; help_reason?: string | null };
   /** Present on the help-request response: the label of what was requested. */
   request?: string;
 }

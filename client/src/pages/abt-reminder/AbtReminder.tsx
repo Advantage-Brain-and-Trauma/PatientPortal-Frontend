@@ -74,6 +74,13 @@ const CLINIC_TIMEZONE = "America/Chicago";
 
 /** sessionStorage keys (tab-scoped; never holds the raw token). */
 const REQUEST_LABEL_KEY = "abt-request-label";
+/** A message to show on /help after /help/time was left because the appointment is already confirmed. */
+const HELP_NOTICE_KEY = "abt-help-notice";
+/** How long a stored /help notice stays valid (it is shown right after the redirect). */
+const HELP_NOTICE_MAX_AGE_MS = 60_000;
+
+/** Backend 422 text for a reschedule on an already-confirmed appointment (also used before calling it). */
+const ALREADY_CONFIRMED_MESSAGE = "This appointment is already confirmed. Please call us to change the time.";
 
 type Choice = { id: string; label: string; icon: LucideIcon };
 
@@ -122,7 +129,7 @@ const PREVIEW_APPOINTMENT: ReminderAppointment = {
   is_virtual: 0,
   attend_status: "S",
   can_respond: true,
-  response: { status: null, reason: null },
+  response: { status: null, reason: null, help_reason: null },
 };
 
 let previewAppointment: ReminderAppointment = { ...PREVIEW_APPOINTMENT };
@@ -132,7 +139,10 @@ const previewDelay = <T,>(value: T) => new Promise<T>((resolve) => setTimeout(()
 const PreviewApi: typeof ReminderApi = {
   getAppointment: () => previewDelay({ ...previewAppointment }),
   confirm: () => {
-    previewAppointment = { ...previewAppointment, response: { status: "confirmed", reason: null } };
+    // Already confirmed: unchanged. After a help request: a new confirmed reply.
+    if (previewAppointment.response.status !== "confirmed") {
+      previewAppointment = { ...previewAppointment, response: { status: "confirmed", reason: null, help_reason: null } };
+    }
     return previewDelay({ ...previewAppointment });
   },
   getTimeSlots: () =>
@@ -147,12 +157,18 @@ const PreviewApi: typeof ReminderApi = {
       message: null,
     }),
   reschedule: (_token, time) => {
+    // A confirmed appointment (confirm or an earlier reschedule) can't be moved online again.
+    if (previewAppointment.response.status === "confirmed") {
+      return new Promise((_resolve, reject) =>
+        setTimeout(() => reject(new ReminderApiError("unprocessable", ALREADY_CONFIRMED_MESSAGE, 422)), 300),
+      );
+    }
     // Same appointment modified in place; API 1 then reports it as confirmed.
     previewAppointment = {
       ...previewAppointment,
       time: `${time}:00`,
       end_time: null,
-      response: { status: "confirmed", reason: null },
+      response: { status: "confirmed", reason: null, help_reason: null },
     };
     return previewDelay({ attend_date: previewAppointment.attend_date, time: `${time}:00`, end_time: null });
   },
@@ -161,7 +177,14 @@ const PreviewApi: typeof ReminderApi = {
       [...TRANSPORTATION_OPTIONS, ...LOCATION_OPTIONS, ...CONCERN_OPTIONS].find(
         (option) => option.id === body.option,
       )?.label ?? "Appointment help";
-    previewAppointment = { ...previewAppointment, response: { status: "help_requested", reason: label } };
+    // Once confirmed, status stays "confirmed" and the text goes to help_reason (latest only).
+    previewAppointment = {
+      ...previewAppointment,
+      response:
+        previewAppointment.response.status === "confirmed"
+          ? { ...previewAppointment.response, help_reason: label }
+          : { status: "help_requested", reason: label, help_reason: null },
+    };
     return previewDelay({ ...previewAppointment, request: label });
   },
 };
@@ -211,6 +234,11 @@ function isConfirmed(appointment: ReminderAppointment) {
   return appointment.can_respond && appointment.response?.status === "confirmed";
 }
 
+/** Help text the patient sent after confirming (the latest one), or null. */
+function confirmedHelpReason(appointment: ReminderAppointment) {
+  return isConfirmed(appointment) ? appointment.response?.help_reason?.trim() || null : null;
+}
+
 function phoneHref(phone: string) {
   const digits = phone.replace(/\D/g, "");
   return digits.length === 10 ? `tel:+1${digits}` : `tel:+${digits}`;
@@ -233,6 +261,30 @@ function writeSession(key: string, value: string) {
     window.sessionStorage.setItem(key, value);
   } catch {
     // Storage unavailable (private mode) — the screen falls back to API data.
+  }
+}
+
+function removeSession(key: string) {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Storage unavailable — nothing to clear.
+  }
+}
+
+/** Keep a message for the /help screen across the /help/time → /help redirect. */
+function writeHelpNotice(message: string) {
+  writeSession(HELP_NOTICE_KEY, JSON.stringify({ message, at: Date.now() }));
+}
+
+/** The stored /help message if it is still fresh, else null. */
+function readHelpNotice(): string | null {
+  try {
+    const stored = JSON.parse(readSession(HELP_NOTICE_KEY) || "null") as { message?: unknown; at?: unknown } | null;
+    if (!stored || typeof stored.message !== "string" || typeof stored.at !== "number") return null;
+    return Date.now() - stored.at <= HELP_NOTICE_MAX_AGE_MS ? stored.message : null;
+  } catch {
+    return null;
   }
 }
 
@@ -669,12 +721,16 @@ function NoLongerScheduledScreen() {
 
 function HelpOptionsScreen() {
   const { appointment, phone, navigate } = useReminder();
+  // Set when "Choose a new appointment time" found the appointment already confirmed.
+  const [notice] = useState(() => (isConfirmed(appointment) ? readHelpNotice() : null));
+  useEffect(() => removeSession(HELP_NOTICE_KEY), []);
   return (
     <ReminderSheet backTo="/" className="page-sheet--roomy">
       <PageIntro
         title="What would help you attend?"
         copy="Select the option that best describes what you need. Your appointment will remain unchanged while we help."
       />
+      {notice ? <StatusNotice>{notice}</StatusNotice> : null}
       <AppointmentContext />
       <div className="choice-stack" aria-label="Attendance help options">
         {/* A confirmed appointment (confirmed or rescheduled) can't be moved again online. */}
@@ -710,6 +766,9 @@ function DifferentTimeScreen() {
       refreshAppointment();
     }
   }, [slotError]);
+
+  // A notice left by an earlier attempt must not show up on a later visit to /help.
+  useEffect(() => removeSession(HELP_NOTICE_KEY), []);
 
   const optionCount = slotsQuery.isSuccess ? `${slots.length} ${slots.length === 1 ? "option" : "options"}` : "";
 
@@ -771,6 +830,7 @@ function DifferentTimeScreen() {
                 // be moved again — updating the appointment sends this screen back to /help.
                 const latest = await apiFor(token).getAppointment(token);
                 if (isConfirmed(latest) || !latest.can_respond) {
+                  if (isConfirmed(latest)) writeHelpNotice(ALREADY_CONFIRMED_MESSAGE);
                   setAppointment(latest);
                   return;
                 }
@@ -786,6 +846,12 @@ function DifferentTimeScreen() {
                   });
                   navigate("/rescheduled");
                 } catch (caught) {
+                  // "Already confirmed" (e.g. confirmed in another tab just now): the refreshed
+                  // appointment sends this screen to /help, which shows the message as sent.
+                  // /help only shows it if the appointment really is confirmed.
+                  if (caught instanceof ReminderApiError && caught.kind === "unprocessable") {
+                    writeHelpNotice(caught.message);
+                  }
                   // e.g. "That time is no longer available" — reload the list.
                   setSelectedTime(null);
                   slotsQuery.refetch();
@@ -1015,9 +1081,10 @@ function ConfirmedScreen({ rescheduled = false }: { rescheduled?: boolean }) {
 
   // After a reschedule, API 1 already returns the new time (same appointment, modified in place).
   const { attend_date: date, time, end_time: endTime } = appointment;
+  const helpReason = confirmedHelpReason(appointment);
   const firstName = appointment.patient_first_name?.trim();
   return (
-    <ReminderSheet>
+    <ReminderSheet className={helpReason ? "page-sheet--with-notice" : undefined}>
       <div className="success-intro">
         <div className="success-mark">
           <Check aria-hidden="true" />
@@ -1030,6 +1097,12 @@ function ConfirmedScreen({ rescheduled = false }: { rescheduled?: boolean }) {
           Your appointment is confirmed for {formatLongDate(date)} at {formatTime(time)}.
         </p>
       </div>
+      {helpReason ? (
+        <StatusNotice>
+          {/* Clamped to two lines: the text can carry the patient's note (up to 500 characters). */}
+          <span className="status-notice__clamp">Request received, our team will contact you: {helpReason}</span>
+        </StatusNotice>
+      ) : null}
       <AppointmentCard date={date} time={time} />
       <div className="action-stack">
         <ActionButton icon={CalendarPlus} onClick={() => downloadCalendarFile(appointment, date, time, endTime)}>
@@ -1048,10 +1121,17 @@ function ConfirmedScreen({ rescheduled = false }: { rescheduled?: boolean }) {
 
 function RequestReceivedScreen() {
   const { appointment, phone, navigate } = useReminder();
-  if (appointment.response?.status !== "help_requested") return <ReminderScreen />;
+  // A help request after confirming keeps the appointment confirmed; its text is in help_reason.
+  const helpReason = confirmedHelpReason(appointment);
+  const confirmed = !!helpReason;
+  if (appointment.response?.status !== "help_requested" && !confirmed) return <ReminderScreen />;
 
   const requestLabel =
-    appointment.request || readSession(REQUEST_LABEL_KEY) || appointment.response.reason || "Appointment help";
+    appointment.request ||
+    readSession(REQUEST_LABEL_KEY) ||
+    helpReason ||
+    appointment.response.reason ||
+    "Appointment help";
   const detailLine = [appointment.provider_name, appointment.visit_type_name].filter(Boolean);
   return (
     <ReminderSheet>
@@ -1064,8 +1144,9 @@ function RequestReceivedScreen() {
           We’ll help with your appointment.
         </h1>
         <p className="lede">
-          Your appointment is still scheduled for {formatLongDate(appointment.attend_date)} at{" "}
-          {formatTime(appointment.time)}. Our team will contact you within one business day.
+          Your appointment is {confirmed ? "confirmed" : "still scheduled"} for{" "}
+          {formatLongDate(appointment.attend_date)} at {formatTime(appointment.time)}. Our team will contact you
+          within one business day.
         </p>
       </div>
       <article className="request-card">
@@ -1106,7 +1187,9 @@ function RequestReceivedScreen() {
           Return to appointment details
         </ActionButton>
       </div>
-      <p className="status-footnote">Your appointment remains unchanged until a new time is confirmed.</p>
+      {confirmed ? null : (
+        <p className="status-footnote">Your appointment remains unchanged until a new time is confirmed.</p>
+      )}
     </ReminderSheet>
   );
 }
@@ -1227,8 +1310,9 @@ const RESULT_SCREENS: Record<string, ComponentType> = {
 /**
  * Which screen a sub-path may show for the current appointment, or null to stay.
  *
- * Confirmed (confirm or online reschedule — latest reply "confirmed"):
- *   - never shows the reminder screen: "/", unknown paths and "/help/requested" → "/confirmed";
+ * Confirmed (confirm or online reschedule — stays "confirmed" after a later help request):
+ *   - never shows the reminder screen: "/" and unknown paths → "/confirmed";
+ *   - "/help/requested" only after a help request sent since confirming (help_reason), else "/confirmed";
  *   - can't pick a different time again: "/help/time" → "/help".
  * Not confirmed:
  *   - "/confirmed" and "/rescheduled" → "/" (the reminder screen);
@@ -1237,7 +1321,8 @@ const RESULT_SCREENS: Record<string, ComponentType> = {
 function resolveRedirect(subPath: string, appointment: ReminderAppointment): string | null {
   const isKnownScreen = subPath === "/" || subPath in ACTION_SCREENS || subPath in RESULT_SCREENS;
   if (isConfirmed(appointment)) {
-    if (!isKnownScreen || subPath === "/" || subPath === "/help/requested") return "/confirmed";
+    if (!isKnownScreen || subPath === "/") return "/confirmed";
+    if (subPath === "/help/requested" && !confirmedHelpReason(appointment)) return "/confirmed";
     if (subPath === "/help/time") return "/help";
     return null;
   }
