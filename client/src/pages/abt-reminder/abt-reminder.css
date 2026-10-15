@@ -1403,3 +1403,155 @@
     margin-bottom: 0.25rem;
   }
 }
+
+/* ==========================================================================
+ * Link-problem screens (invalid / expired / couldn't load)
+ * Only an icon, a heading, one line of copy and a button, so they don't need
+ * the short-screen compaction above: content grows with viewport HEIGHT to
+ * use the free space while the card width stays the same. Sizes are all
+ * clamp()ed to dvh so the first fold still fits without scrolling.
+ * ========================================================================== */
+.abt-reminder .page-sheet--status .success-intro {
+  margin-bottom: clamp(1rem, 4.5dvh, 2.5rem);
+}
+.abt-reminder .page-sheet--status .success-mark {
+  width: clamp(52px, 12dvh, 104px);
+  height: clamp(52px, 12dvh, 104px);
+  margin-bottom: clamp(0.6rem, 2.6dvh, 1.5rem);
+}
+.abt-reminder .page-sheet--status .success-mark svg {
+  width: clamp(1.6rem, 6dvh, 3rem);
+  height: clamp(1.6rem, 6dvh, 3rem);
+}
+.abt-reminder .page-sheet--status .success-intro .eyebrow {
+  margin-bottom: clamp(0.4rem, 1.6dvh, 1rem);
+  font-size: clamp(0.78rem, 2.1dvh, 1rem);
+}
+.abt-reminder .page-sheet--status .success-intro h1 {
+  font-size: clamp(1.6rem, min(8.5vw, 7dvh), 3.4rem);
+}
+.abt-reminder .page-sheet--status .success-intro .lede {
+  max-width: 36ch;
+  margin: clamp(0.5rem, 2.2dvh, 1.25rem) auto 0;
+  font-size: clamp(1rem, min(4.6vw, 3.1dvh), 1.45rem);
+  line-height: 1.4;
+}
+.abt-reminder .page-sheet--status .action-stack {
+  gap: clamp(0.5rem, 1.8dvh, 1rem);
+}
+.abt-reminder .page-sheet--status .action-button {
+  min-height: clamp(48px, 10dvh, 68px);
+  font-size: clamp(1rem, 2.8dvh, 1.2rem);
+}
+.abt-reminder .page-sheet--status .action-button svg {
+  width: clamp(1.2rem, 3.2dvh, 1.6rem);
+  height: clamp(1.2rem, 3.2dvh, 1.6rem);
+}
+@media (min-width: 720px) {
+  .abt-reminder .page-sheet--status {
+    padding-block: clamp(1.25rem, 5dvh, 3rem);
+  }
+  .abt-reminder .page-sheet--status .brand-header {
+    margin-bottom: clamp(0.75rem, 3.5dvh, 2rem);
+  }
+}
+
+/* ==========================================================================
+ * Roomy screens (reminder, help options, transportation, no longer scheduled)
+ * Desktop only. Their content leaves ~100–160px of free height, so text,
+ * rows and buttons scale up with viewport HEIGHT instead of the fixed
+ * short-screen sizes above. Card width is unchanged; everything is clamp()ed
+ * to dvh so the first fold still fits without scrolling. Phones keep the
+ * shared sizing (their content already fills the top-aligned layout).
+ * ========================================================================== */
+@media (min-width: 720px) {
+  .abt-reminder .page-sheet--roomy .page-intro {
+    margin-bottom: clamp(0.6rem, 2.2dvh, 1.6rem);
+  }
+  .abt-reminder .page-sheet--roomy .eyebrow {
+    font-size: clamp(0.72rem, 1.6dvh, 0.9rem);
+  }
+  .abt-reminder .page-sheet--roomy h1 {
+    font-size: clamp(1.4rem, 5.2dvh, 3.45rem);
+  }
+  .abt-reminder .page-sheet--roomy .page-intro .lede,
+  .abt-reminder .page-sheet--roomy .support-intro .lede {
+    margin-top: clamp(0.3rem, 1.3dvh, 1.05rem);
+    font-size: clamp(0.92rem, 2.6dvh, 1.32rem);
+  }
+  .abt-reminder .page-sheet--roomy .appointment-card__date {
+    padding-block: clamp(0.5rem, 1.9dvh, 1.2rem);
+  }
+  .abt-reminder .page-sheet--roomy .appointment-card__date p {
+    font-size: clamp(0.95rem, 2.3dvh, 1.2rem);
+  }
+  .abt-reminder .page-sheet--roomy .appointment-card__date strong {
+    font-size: clamp(1.3rem, 3.7dvh, 2.1rem);
+  }
+  .abt-reminder .page-sheet--roomy .detail-row {
+    min-height: clamp(32px, 6.4dvh, 72px);
+    font-size: clamp(0.9rem, 2.1dvh, 1.1rem);
+  }
+  .abt-reminder .page-sheet--roomy .appointment-context {
+    padding-block: clamp(0.45rem, 1.5dvh, 1.05rem);
+  }
+  .abt-reminder .page-sheet--roomy .appointment-context > div > strong,
+  .abt-reminder .page-sheet--roomy .appointment-context > div > span {
+    font-size: clamp(0.9rem, 2.1dvh, 1.1rem);
+  }
+  .abt-reminder .page-sheet--roomy .action-stack {
+    gap: clamp(0.45rem, 1.5dvh, 0.95rem);
+  }
+  .abt-reminder .page-sheet--roomy .action-button {
+    min-height: clamp(40px, 7.4dvh, 64px);
+    font-size: clamp(0.95rem, 2.3dvh, 1.15rem);
+  }
+  .abt-reminder .page-sheet--roomy .help-line {
+    font-size: clamp(0.82rem, 1.9dvh, 1.05rem);
+  }
+  .abt-reminder .page-sheet--roomy .choice-link {
+    min-height: clamp(44px, 8dvh, 80px);
+    font-size: clamp(0.95rem, 2.3dvh, 1.15rem);
+  }
+  .abt-reminder .page-sheet--roomy .choice-link__icon {
+    width: clamp(34px, 5.4dvh, 48px);
+    height: clamp(34px, 5.4dvh, 48px);
+  }
+  .abt-reminder .page-sheet--roomy .support-intro__art {
+    width: clamp(44px, 9dvh, 104px);
+    height: clamp(44px, 9dvh, 104px);
+  }
+  .abt-reminder .page-sheet--roomy .form-panel h2 {
+    font-size: clamp(1.05rem, 2.7dvh, 1.5rem);
+  }
+  .abt-reminder .page-sheet--roomy .radio-stack--compact .radio-choice {
+    min-height: clamp(44px, 7dvh, 74px);
+  }
+  .abt-reminder .page-sheet--roomy .radio-stack--compact .radio-choice__copy > span {
+    font-size: clamp(0.85rem, 1.9dvh, 1.05rem);
+  }
+  .abt-reminder .page-sheet--roomy textarea {
+    height: clamp(42px, 7dvh, 88px);
+  }
+}
+
+/* ==========================================================================
+ * Logo size (desktop, every screen)
+ * The logo is a 381×119 raster with thin "BRAIN AND TRAUMA" lettering: below
+ * ~50px tall that line is unreadable, and above ~68px it is stretched past
+ * its native detail on high-DPI screens and looks soft. Keep it in that
+ * band, growing with viewport height. Phones keep their own sizes above.
+ * ========================================================================== */
+@media (min-width: 720px) {
+  /* Slightly less space around the card pays for the readable logo on the
+     densest screens (e.g. "other concern" at ~690px tall). */
+  .abt-reminder .prototype-stage {
+    padding-block: clamp(0.5rem, 1.4dvh, 1.5rem);
+  }
+  .abt-reminder .page-sheet .brand-header img {
+    height: clamp(52px, 7.6dvh, 68px);
+  }
+  .abt-reminder .page-sheet .brand-header--compact img {
+    height: clamp(44px, 6.2dvh, 60px);
+  }
+}

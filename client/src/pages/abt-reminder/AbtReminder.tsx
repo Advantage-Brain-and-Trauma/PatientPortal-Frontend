@@ -361,14 +361,16 @@ function PageSheet({
   backTo,
   backLabel = "Back to appointment",
   onBack,
+  className,
 }: {
   children: ReactNode;
   backTo?: string;
   backLabel?: string;
   onBack?: (to: string) => void;
+  className?: string;
 }) {
   return (
-    <section className="page-sheet enter-screen" aria-live="polite">
+    <section className={`page-sheet enter-screen${className ? ` ${className}` : ""}`} aria-live="polite">
       <BrandHeader compact={!!backTo} />
       {backTo && onBack ? (
         <button className="back-link" onClick={() => onBack(backTo)} type="button">
@@ -381,7 +383,7 @@ function PageSheet({
   );
 }
 
-function ReminderSheet(props: { children: ReactNode; backTo?: string; backLabel?: string }) {
+function ReminderSheet(props: { children: ReactNode; backTo?: string; backLabel?: string; className?: string }) {
   const { navigate } = useReminder();
   return <PageSheet {...props} onBack={navigate} />;
 }
@@ -600,7 +602,7 @@ function ReminderScreen() {
 
   const status = appointment.response?.status;
   return (
-    <ReminderSheet>
+    <ReminderSheet className="page-sheet--roomy">
       <PageIntro
         eyebrow="Appointment reminder"
         title="Will you be able to make your appointment?"
@@ -654,7 +656,7 @@ function NoLongerScheduledActions() {
 /** Shown on the help screens once the appointment can no longer be changed online. */
 function NoLongerScheduledScreen() {
   return (
-    <ReminderSheet backTo="/">
+    <ReminderSheet backTo="/" className="page-sheet--roomy">
       <PageIntro
         title="This appointment is no longer scheduled."
         copy="It can’t be changed online anymore. Please call us and our team will help."
@@ -668,7 +670,7 @@ function NoLongerScheduledScreen() {
 function HelpOptionsScreen() {
   const { appointment, phone, navigate } = useReminder();
   return (
-    <ReminderSheet backTo="/">
+    <ReminderSheet backTo="/" className="page-sheet--roomy">
       <PageIntro
         title="What would help you attend?"
         copy="Select the option that best describes what you need. Your appointment will remain unchanged while we help."
@@ -907,7 +909,7 @@ function TransportationScreen() {
   const { phone } = useReminder();
   const form = useHelpRequest("transportation", TRANSPORTATION_OPTIONS, false);
   return (
-    <ReminderSheet backTo="/help" backLabel="Back to help options">
+    <ReminderSheet backTo="/help" backLabel="Back to help options" className="page-sheet--roomy">
       <SupportIntro
         art={TRANSPORTATION_ART}
         artAlt="Gold and burgundy transportation illustration"
@@ -1148,7 +1150,7 @@ function LinkProblemScreen({
   onRetry?: () => void;
 }) {
   return (
-    <PageSheet>
+    <PageSheet className="page-sheet--status">
       <div className="success-intro">
         <div className="success-mark">
           <Icon aria-hidden="true" />

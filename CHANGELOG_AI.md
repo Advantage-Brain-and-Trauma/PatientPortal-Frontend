@@ -18,6 +18,58 @@ and notable configuration/docs changes.
 
 ---
 
+## 2026-10-15
+
+### Fix: ABT reminder logo too small / soft on desktop
+> **What:** The logo asset is a 381×119 PNG with thin "BRAIN AND TRAUMA" lettering (no
+> higher-resolution source exists in the repo or its history). On short desktop screens the
+> shared rules forced it to 36px tall (30px on sub-pages), where that lettering is unreadable.
+> One desktop rule (≥720px wide) now sizes it on every screen: 52–68px tall on the main / result /
+> link-problem screens and 44–60px on sub-pages, growing with viewport height and capped so the
+> raster isn't stretched past its native detail. This replaces the logo sizes added to the
+> `page-sheet--status` / `page-sheet--roomy` blocks earlier today. The desktop page padding around
+> the card is trimmed slightly (`clamp(0.5rem, 1.4dvh, 1.5rem)`) to pay for it on the densest
+> screens. Phones are unchanged. Verified no first-fold scroll on every screen at 1365×600–1080
+> and 1920×1080.
+>
+> **Follow-up:** For a truly crisp logo at large sizes / high-DPI, swap in an SVG or a 2×–3×
+> PNG (≥ 762×238) at `client/src/pages/abt-reminder/assets/abt-logo.png`.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/abt-reminder.css`.
+>
+> **Auth / patient-data:** None — styling only.
+
+### Enhancement: ABT reminder roomy screens scale up to the available height (desktop)
+> **What:** Audited every reminder screen at desktop heights 560–1080px. The reminder page,
+> help-options page and transportation form left 107–226px of empty height (the time picker,
+> location, other-concern and confirmed pages already fill the fold). Those three, plus the
+> "no longer scheduled" screen, now get a `page-sheet--roomy` modifier that grows the logo,
+> heading, copy, appointment card, detail rows, choice rows, radio options, note field and buttons
+> with viewport height (`dvh` clamps), at ≥720px width only. Phones and card width are unchanged.
+> Verified no first-fold scroll at 1365×560/600/640/680/720/760/820/900, 1920×1080 and 768×1024;
+> each screen keeps at least 49px of spare height.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/AbtReminder.tsx` (`ReminderSheet` forwards an
+> optional `className`; four screens pass `page-sheet--roomy`),
+> `client/src/pages/abt-reminder/abt-reminder.css` (new block appended at the end).
+>
+> **Auth / patient-data:** None — styling only. `PREVIEW_WITHOUT_TOKEN` was switched on locally
+> only to measure the screens and is back to `false`.
+
+### Enhancement: ABT reminder link-problem screens scale up to the available height
+> **What:** The "This link is not valid." / "This appointment has already passed." / "We couldn't
+> load your appointment." screens used the short-screen compaction meant for busy pages, so on a
+> ~600px-tall desktop window the card's content was tiny with lots of empty space. These screens
+> now get a `page-sheet--status` modifier whose logo, icon, eyebrow, heading, copy and button
+> sizes grow with viewport height (`dvh` clamps). Card width is unchanged. Checked with no
+> first-fold scroll at 1365×480 / 600 / 900 and 375×600 / 812.
+>
+> **Files/areas:** `client/src/pages/abt-reminder/AbtReminder.tsx` (`PageSheet` takes an optional
+> `className`; `LinkProblemScreen` passes `page-sheet--status`),
+> `client/src/pages/abt-reminder/abt-reminder.css` (new rules appended at the end).
+>
+> **Auth / patient-data:** None — styling only; no token, API or data changes.
+
 ## 2026-10-12
 
 ### Fix: ABT reminder confirmed-appointment rules enforced on every page
